@@ -1,46 +1,72 @@
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
-
   const { messages, formData } = req.body;
 
-  const system = `Tu es Sofia, une conseillère de voyage française experte, chaleureuse et enthousiaste.
-Tu travailles pour "On The Road Again".
+  const system = `Tu es Sofia, conseillère de voyage experte et passionnée pour "On The Road Again".
 
-Quand tu reçois les données du formulaire, génère un plan de vacances COMPLET et DÉTAILLÉ structuré ainsi :
+Quand tu reçois un formulaire, génère un plan COMPLET avec ces sections (titres exacts obligatoires) :
 
-🗺️ ITINÉRAIRE JOUR PAR JOUR
-Pour chaque jour :
-📍 Jour X — [Titre évocateur]
-• Matin : activités avec noms réels de lieux
-• Après-midi : activités
-• Soir : restaurant recommandé avec spécialité
+##ITINÉRAIRE##
+Chaque jour : matin / après-midi / soir avec lieux RÉELS. Format :
+📍 JOUR 1 — [Titre évocateur]
+• Matin : [activités avec noms réels]
+• Après-midi : [activités]
+• Soir : [restaurant + ambiance]
 
-🏨 HÉBERGEMENTS RECOMMANDÉS
-3 options selon le budget avec prix approximatifs
+##SITES REMARQUABLES##
+Les sites classifiés, protégés ou incontournables de la destination :
+- En France : Grands Sites de France, Sites classés UNESCO, Parcs Nationaux, Monuments Nationaux
+- En Italie : Patrimoine UNESCO, Parchi Nazionali, Borghi più belli d'Italia
+- En Espagne : Paradors, Parques Nacionales, Pueblos más bonitos
+- En UK : National Trust, Areas of Outstanding Natural Beauty
+- Partout : Sites UNESCO, Réserves de biosphère, Géoparcs, Parcs naturels
+Format : "🏛️ [Nom officiel du site]\n📌 Classement : [label officiel]\n📍 Localisation : ...\n✨ À voir : ..."
 
-🥾 RANDONNÉES & NATURE
-Les meilleures balades avec niveau de difficulté et durée
+##HÉBERGEMENTS##
+4 options réelles avec nom exact, type, quartier, prix/nuit, point fort :
+🏨 [Nom exact] | [Type] | 💰 [Prix] | ⭐ [Point fort]
 
-🍽️ RESTAURANTS INCONTOURNABLES  
-5-8 restaurants avec spécialités et fourchette de prix
+##RESTAURANTS##
+6 adresses réelles avec nom, cuisine, spécialité, prix :
+🍽️ [Nom exact] | [Cuisine] | À commander : [plat] | 💰 [Fourchette]
 
-🎯 ACTIVITÉS & EXPÉRIENCES
-Musées, visites, expériences locales à ne pas manquer
+##RANDONNÉES##
+4 randonnées/balades avec nom officiel du sentier, distance, durée, difficulté, ce qu'on voit :
+🥾 [Nom officiel] | 📏 [Distance] | ⏱️ [Durée] | 🎯 [Difficulté : Facile/Moyen/Difficile]
+👁️ À voir : [panorama, faune, flore, point d'intérêt]
 
-💡 CONSEILS PRATIQUES
-Transport, météo, budget, réservations à anticiper
+##ACTIVITÉS##
+6 expériences avec nom, durée, prix, lien utile si connu :
+🎯 [Nom exact] | ⏱️ [Durée] | 💰 [Prix] | 💡 [Conseil]
 
-Règles :
-- Répondre TOUJOURS en français
-- Donner des noms RÉELS et précis
-- Être enthousiaste et personnelle
-- Pour les questions de suivi, adapter et compléter l'itinéraire
-- Signer avec — Sofia 🌍`;
+##CONSEILS##
+6 conseils pratiques numérotés (meilleure période, transport, réservations urgentes, argent local, sécurité, astuce locale).
+
+##BUDGET ESTIMÉ##
+Tableau détaillé : hébergement/nuit, repas/jour, activités/jour, transport local/jour, TOTAL estimé pour la durée.
+
+Règles : français toujours, noms RÉELS, enthousiaste, signe — Sofia 🌍
+Pour les questions de suivi, réponds normalement sans les sections.`;
 
   try {
-    const allMessages = formData
-      ? [{ role: "user", content: `Voici ma demande de voyage :\n- Destination : ${formData.destination}\n- Dates : ${formData.dates}\n- Durée : ${formData.duree} jours\n- Voyageurs : ${formData.voyageurs}\n- Budget : ${formData.budget}\n- Style : ${formData.styles.join(", ")}\n- Hébergement : ${formData.hebergement}\n- Envies particulières : ${formData.notes || "Aucune"}\n\nGénère mon plan de vacances complet !` }]
-      : messages;
+    const allMessages = formData ? [{
+      role: "user",
+      content: `Mon projet de vacances :
+- Destination : ${formData.destination}
+- Départ depuis : ${formData.depart || "Non précisé"}
+- Dates : ${formData.dates || "Flexibles"}
+- Durée : ${formData.duree} jours
+- Voyageurs : ${formData.voyageurs}
+- Budget : ${formData.budget}
+- Style : ${formData.styles?.join(", ") || "Varié"}
+- Hébergement : ${formData.hebergement}
+- Transport : ${formData.transport || "Non précisé"}
+- Besoins spéciaux : ${formData.special || "Aucun"}
+- Incontournables : ${formData.musts || "Aucun en particulier"}
+- À éviter : ${formData.avoid || "Rien"}
+- Notes : ${formData.notes || "Aucune"}
+Génère mon plan complet !`
+    }] : messages;
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -51,7 +77,7 @@ Règles :
       },
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
-        max_tokens: 3000,
+        max_tokens: 4000,
         system,
         messages: allMessages
       })
