@@ -374,9 +374,12 @@ export default function SofiaPlanner() {
       if(data.type==="plan"){
         const p={...data.data,destination:form.destination||data.data.destination||"Voyage"};
         setPlan(p);setMsgs([{role:"assistant",content:data.data.intro||"Votre plan est prêt !"}]);setPhase("result");
+      }else if(data.type==="error"){
+        setPhase("form");
+        setOverloaded(true);
       }else{
-        // Chat response - still a valid reply
-        alert("Sofia répond : "+data.reply);setPhase("form");
+        setPhase("form");
+        setOverloaded(true);
       }
     }catch(err){alert("Erreur : "+err.message);setPhase("form");}
   };
