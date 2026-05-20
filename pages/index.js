@@ -353,7 +353,7 @@ export default function SofiaPlanner() {
     if(!uploadedFile && !form.destination.trim()) e.destination="Destination obligatoire";
     if(!uploadedFile && !form.budget) e.budget="Budget obligatoire";
     if(!uploadedFile && !form.hebergement) e.hebergement="Hébergement obligatoire";
-    if(form.dateStart&&form.dateEnd&&new Date(form.dateEnd)<=new Date(form.dateStart)) e.dateEnd="La date de retour doit être après le départ";
+    // dateEnd is now computed automatically from dateStart + nuits
     setErrors(e);
     if(Object.keys(e).length>0){
       document.getElementById("field-"+Object.keys(e)[0])?.scrollIntoView({behavior:"smooth",block:"center"});
@@ -374,9 +374,6 @@ export default function SofiaPlanner() {
       if(data.type==="plan"){
         const p={...data.data,destination:form.destination||data.data.destination||"Voyage"};
         setPlan(p);setMsgs([{role:"assistant",content:data.data.intro||"Votre plan est prêt !"}]);setPhase("result");
-      }else if(data.type==="error"){
-        setPhase("form");
-        setOverloaded(true);
       }else{
         setPhase("form");
         setOverloaded(true);
@@ -437,6 +434,22 @@ ${plan?.tips?.length?sec("💡 Conseils",tipsH):""}${plan?.budget?sec("💰 Budg
 
   const destForDisplay = plan?.destination||form.destination;
   const seed = destForDisplay.toLowerCase().replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"");
+
+  const computedEndDate = form.dateStart ? (() => {
+    const end = new Date(form.dateStart);
+    end.setDate(end.getDate() + form.nuits);
+    return end.toLocaleDateString("fr-FR", {weekday:"long",day:"numeric",month:"long",year:"numeric"});
+  })() : null;
+
+  const transportPlaceholder = (() => {
+    const dest = form.destination || "la destination";
+    const dep = form.depart || "Luxembourg";
+    if ((form.transport_to||[]).includes("⛴️ Ferry") && form.destination) return "ex: ferry depuis Toulon ou Nice vers " + dest;
+    if ((form.transport_to||[]).includes("✈️ Avion")) return "ex: vol depuis " + dep + ", escale éventuelle";
+    if ((form.transport_to||[]).includes("🚄 Train")) return "ex: départ gare de " + dep + ", correspondances";
+    if ((form.transport_to||[]).includes("🚗 Ma voiture")) return "ex: itinéraire autoroute, durée et péages";
+    return "Précise les détails de ton trajet…";
+  })();
 
   const TABS=[
     {k:"days",l:"🗺️ Itinéraire",n:plan?.days?.length},
@@ -532,54 +545,25 @@ ${plan?.tips?.length?sec("💡 Conseils",tipsH):""}${plan?.budget?sec("💰 Budg
                   <input style={inp} value={form.depart} onChange={e=>setF("depart",e.target.value)} placeholder="Luxembourg, Paris, Bruxelles…"/>
                 </div>
               </div>
-<div style={{background:COLORS.cream,border:"1px solid "+COLORS.parch,borderRadius:6,padding:"14px 16px"}}>
+              <div style={{background:COLORS.cream,border:"1px solid "+COLORS.parch,borderRadius:6,padding:"14px 16px"}}>
                 <span style={lbl}>Dates du séjour</span>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
                   <div>
                     <div style={{fontSize:10,color:COLORS.mist,marginBottom:4,fontFamily:"'DM Mono',monospace",letterSpacing:1}}>📅 DATE DE DÉPART</div>
-                    <input type="date" style={inp} value={form.dateStart} onChange={e=>handleDate("dateStart",e.target.value)}/>
+                    <input type="date" style={inp} value={form.dateStart} onChange={e=>setF("dateStart",e.target.value)}/>
                   </div>
                   <div id="field-nuits">
                     <div style={{fontSize:10,color:COLORS.mist,marginBottom:4,fontFamily:"'DM Mono',monospace",letterSpacing:1}}>🌙 NOMBRE DE NUITS</div>
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
-                      <button onClick={()=>setF("nuits",Math.max(1,form.nuits-1))} style={{width:36,height:36,border:"1.5px solid "+COLORS.parch,borderRadius:4,background:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>−</button>
+                      <button type="button" onClick={()=>setF("nuits",Math.max(1,form.nuits-1))} style={{width:36,height:40,border:"1.5px solid "+COLORS.parch,borderRadius:4,background:"#fff",fontSize:20,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
                       <div style={{flex:1,textAlign:"center",fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:700,color:COLORS.gold}}>{form.nuits}</div>
-                      <button onClick={()=>setF("nuits",Math.min(90,form.nuits+1))} style={{width:36,height:36,border:"1.5px solid "+COLORS.parch,borderRadius:4,background:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>+</button>
+                      <button type="button" onClick={()=>setF("nuits",Math.min(90,form.nuits+1))} style={{width:36,height:40,border:"1.5px solid "+COLORS.parch,borderRadius:4,background:"#fff",fontSize:20,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
                     </div>
                   </div>
                 </div>
-                {form.dateStart && (()=>{
-                  const end = new Date(form.dateStart);
-                  end.setDate(end.getDate()+form.nuits);
-                  const endStr = end.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
-                  return <div style={{padding:"10px 14px",background:"#fff",border:"1.5px solid "+COLORS.gold,borderRadius:4,fontSize:13,color:COLORS.ink}}>
-                    🏠 Retour le <strong>{endStr}</strong>
-                  </div>;
-                })()}
-              </div>
-                  <div>
-                    <div style={{fontSize:10,color:COLORS.mist,marginBottom:4,fontFamily:"'DM Mono',monospace",letterSpacing:1}}>DÉPART</div>
-                    <input type="date" style={inp} value={form.dateStart} onChange={e=>handleDate("dateStart",e.target.value)}/>
-                  </div>
-                  <div style={{textAlign:"center",color:COLORS.gold,fontSize:18}}>→</div>
-                  <div id="field-dateEnd">
-                    <div style={{fontSize:10,color:COLORS.mist,marginBottom:4,fontFamily:"'DM Mono',monospace",letterSpacing:1}}>RETOUR</div>
-                    <input type="date" style={{...inp,borderColor:errors.dateEnd?"#C1440E":undefined}} value={form.dateEnd} onChange={e=>handleDate("dateEnd",e.target.value)}/>
-                    {errors.dateEnd&&<div style={{fontSize:11,color:COLORS.rust,marginTop:4}}>⚠️ {errors.dateEnd}</div>}
-                  </div>
-                </div>
-                {form.dateStart&&form.dateEnd&&!errors.dateEnd?(
-                  <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"#fff",border:"1.5px solid "+COLORS.gold,borderRadius:4}}>
-                    <span style={{fontSize:18}}>🌙</span>
-                    <span style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700,color:COLORS.gold}}>{form.nuits} nuits</span>
-                  </div>
-                ):(
-                  <div id="field-nuits">
-                    <span style={{...lbl,color:COLORS.mist}}>Ou combien de nuits ?</span>
-                    <div style={{display:"flex",alignItems:"center",gap:10}}>
-                      <input type="number" min="1" max="90" style={{...inp,width:80}} value={form.nuits} onChange={e=>setF("nuits",parseInt(e.target.value)||1)}/>
-                      <span style={{fontSize:13,color:COLORS.mist}}>nuits</span>
-                    </div>
+                {computedEndDate && (
+                  <div style={{padding:"10px 14px",background:"#fff",border:"1.5px solid "+COLORS.gold,borderRadius:4,fontSize:13,color:COLORS.ink}}>
+                    🏠 Retour le <strong>{computedEndDate}</strong>
                   </div>
                 )}
               </div>
@@ -602,7 +586,7 @@ ${plan?.tips?.length?sec("💡 Conseils",tipsH):""}${plan?.budget?sec("💰 Budg
                   🛣️ Trajet : {form.transport_to.join(" → ")}
                 </div>
               )}
-              <input style={inp} value={form.transport_to_autre} onChange={e=>setF("transport_to_autre",e.target.value)} placeholder={form.transport_to.includes("⛴️ Ferry") && form.destination ? `ex: ferry vers ${form.destination} — port et horaire` : form.transport_to.includes("✈️ Avion") && form.depart ? `ex: vol depuis ${form.depart||"Luxembourg"} avec escale` : form.transport_to.includes("🚄 Train") ? `ex: départ depuis ${form.depart||"Luxembourg"}, correspondances` : "Précise les détails de ton trajet…"}/>
+              <input style={inp} value={form.transport_to_autre} onChange={e=>setF("transport_to_autre",e.target.value)} placeholder={transportPlaceholder}/>
             </div>
 
             {/* 3 - Voyageurs & budget */}
@@ -733,7 +717,7 @@ ${plan?.tips?.length?sec("💡 Conseils",tipsH):""}${plan?.budget?sec("💰 Budg
                 <div style={{fontFamily:"'DM Mono',monospace",fontSize:8,letterSpacing:3,color:"#EDE0C4",marginTop:10}}>
                   {form.nuits} NUITS{form.voyageurs?` · ${(form.voyageurs==="Autre"?form.voyageurs_autre:form.voyageurs).toUpperCase()}`:""}
                 </div>
-                {form.dateStart&&<div style={{fontFamily:"'DM Mono',monospace",fontSize:8,color:"rgba(255,255,255,.5)",marginTop:4}}>{form.dateStart} → {form.dateEnd}</div>}
+                {form.dateStart&&computedEndDate&&<div style={{fontFamily:"'DM Mono',monospace",fontSize:8,color:"rgba(255,255,255,.5)",marginTop:4}}>{form.dateStart} → {computedEndDate}</div>}
               </div>
             </div>
 
