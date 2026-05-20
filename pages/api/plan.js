@@ -1,5 +1,4 @@
 function extractJSON(text) {
-  const attempts = [function extractJSON(text) {
   const attempts = [
     text.trim(),
     text.trim().replace(/^```json\s*/,'').replace(/\s*```$/,''),
@@ -62,55 +61,37 @@ Signe toujours — Sofia 🌍`;
   try {
     const isForm = !!formData;
     const system = isForm ? systemForm : systemChat;
-    const allMes
-    text.trim(),
-    text.trim().replace(/^```json\s*/,'').replace(/\s*```$/,''),
-    text.trim().replace(/```json/g,'').replace(/```/g,''),
-    (text.match(/\{[\s\S]*\}/)||[])[0],
-  ];
-  for (const a of attempts) {
-    if (!a) continue;
-    try { return JSON.parse(a.trim()); } catch {}
-  }
-  return null;
-}
+    const allMessages = isForm ? [{
+      role: "user",
+      content: `Projet de vacances :
+Destination: ${formData.destination}
+Départ depuis: ${formData.depart || "Non précisé"}
+Comment s'y rendre: ${formData.transport_to || "Non précisé"}${formData.transport_to_autre ? " - " + formData.transport_to_autre : ""}
+Dates: ${formData.dateStart || "Flexibles"} → ${formData.dateEnd || "Flexibles"} (${formData.nuits} nuits)
+Voyageurs: ${formData.voyageurs}${formData.voyageurs_autre ? " - " + formData.voyageurs_autre : ""}
+Budget: ${formData.budget}${formData.budget_global ? " - " + formData.budget_global : ""}
+Style: ${formData.styles?.join(", ") || "Varié"}${formData.style_autre ? ", " + formData.style_autre : ""}
+Hébergement: ${formData.hebergement}${formData.hebergement_autre ? " - " + formData.hebergement_autre : ""}
+Transport sur place: ${formData.transport}${formData.transport_autre ? " - " + formData.transport_autre : ""}
+Besoins spéciaux: ${formData.special || "Aucun"}
+Incontournables: ${formData.musts || "Aucun"}
+À éviter: ${formData.avoid || "Rien"}
+Notes: ${formData.notes || "Aucune"}
+Génère le plan complet en JSON.`
+    }] : messages;
 
-async function callClaude(system, messages, retries = 2) {
-  for (let i = 0; i <= retries; i++) {
-    try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": process.env.ANTHROPIC_API_KEY,
-          "anthropic-version": "2023-06-01"
-        },
-        body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
-          max_tokens: 4000,
-          system,
-          messages
-        })
-      });
-      const data = await response.json();
-      if (response.status === 529 || data.error?.type === "overloaded_error") {
-        if (i < retries) { await new Promise(r => setTimeout(r, 3000)); continue; }
-        throw new Error("OVERLOADED");
-      }
-      if (!response.ok) throw new Error(data.error?.message || "Erreur API");
-      return data.content[0].text;
-    } catch(e) {
-      if (i < retries && e.message !== "OVERLOADED") { await new Promise(r => setTimeout(r, 2000)); continue; }
-      throw e;
+    const text = await callClaude(system, allMessages);
+    const json = extractJSON(text);
+    if (json && (json.days || json.intro)) {
+      res.status(200).json({ type: "plan", data: json });
+    } else {
+      res.status(200).json({ type: "chat", reply: text });
+    }
+  } catch(e) {
+    if (e.message === "OVERLOADED") {
+      res.status(529).json({ error: "OVERLOADED", message: "Serveurs surchargés. Réessaie dans 1 minute." });
+    } else {
+      res.status(500).json({ error: e.message });
     }
   }
 }
-
-export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).end();
-  const { messages, formData } = req.body;
-
-  const systemForm = `Tu es Sofia, conseillère de voyage experte pour "On The Road Again". Tu réponds TOUJOURS en français.
-Réponds UNIQUEMENT avec du JSON valide, sans texte avant ou après, sans balises markdown.
-Format JSON exact :
-{"intro":"Message chaleureux (2 phrases)","days":[{"num":1,"title":"Titre","location":"Ville","morning":"Matin avec vrais lieux","afternoon":"Après-midi","evening":"Soirée + restaurant réel","tip":"Astuce"}],"remarkable_sites":[{"name":"Nom officiel","label":"UNESCO/Grand Site/Parc National/etc","location":"Localisation","description":"Description","website":"URL si connue"}],"accommodations":[{"name":"Nom exact","type":"Type","location":"Quartier","price":"Prix/nuit","why":"Raison"}],"restaurants":[{"name":"Nom","cuisine":"Cuisine","specialty":"Plat signature","price":"Fourchette","tip":"Conseil"}],"hikes":[{"name":"Nom sentier","distance":"X km","duration":"X h","difficulty":"Facile/Moyen/Difficile","highlights":"Ce qu'on voit"}],"activities":[{"name":"Nom","duration":"Durée","price":"Prix","info":"Info"}],"tips":["conseil1","conseil2","conseil3","conseil4","conseil5","conseil6"],"budget":{"accommodation":"X€/nuit","meals":"X€/jour","activities":"X€/jour","transport":"X€/jour","total":"Total estimé"},"packing_essentials":[{"category":"Documents","items":["Passeport","Carte d'id
