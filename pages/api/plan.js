@@ -46,40 +46,48 @@ async function callClaude(system, messages, retries = 2) {
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
-  const { messages, formData, currentPlan } = req.body;
+  const { messages, formData, currentPlan, fileData, fileType } = req.body;
 
-  const JSON_FORMAT = `{"intro":"Message chaleureux personnalisé (2 phrases)","days":[{"num":1,"title":"Titre évocateur","location":"Lieu précis avec adresse si possible","morning":"Description matin avec noms réels de lieux et adresses","afternoon":"Description après-midi","evening":"Restaurant réel avec adresse + soirée","tip":"Astuce pratique du jour"}],"remarkable_sites":[{"name":"Nom officiel","label":"UNESCO/Grand Site de France/Parc National/Patrimoine mondial/etc","location":"Adresse précise","description":"Ce qu'on y voit et ressent","website":"URL officielle si connue","coords":[lat,lon]}],"accommodations":[{"name":"Nom exact","type":"Type","location":"Adresse précise","price":"Prix estimé/nuit","why":"Raison du choix","website":"Site officiel si connu","coords":[lat,lon]}],"restaurants":[{"name":"Nom exact","cuisine":"Type de cuisine","specialty":"Plat signature","price":"Fourchette €","tip":"Conseil pratique","address":"Adresse complète","website":"Site ou page si connu","coords":[lat,lon]}],"hikes":[{"name":"Nom officiel du sentier","distance":"X km","duration":"X h","difficulty":"Facile/Moyen/Difficile","highlights":"Ce qu'on voit","start_point":"Point de départ précis avec adresse","transport_from_center":"Comment y aller depuis le centre","coords_start":[lat,lon]}],"activities":[{"name":"Nom exact","duration":"Durée","price":"Prix","info":"Info pratique","address":"Adresse","website":"Site officiel","coords":[lat,lon]}],"agenda":[{"type":"positive","name":"Nom événement","date":"Date ou période","description":"Détails pratiques"},{"type":"negative","name":"Perturbation","date":"Date","description":"Impact sur le voyage"},{"type":"info","name":"Jour férié ou fermeture","date":"Date","description":"Ce qui est fermé/ouvert"}],"tips":["conseil1","conseil2","conseil3","conseil4","conseil5","conseil6"],"budget":{"accommodation":"X€/nuit","meals":"X€/jour","activities":"X€/jour","transport":"X€/jour","total":"Total estimé pour la durée"},"packing_essentials":[{"category":"Documents","items":["Passeport","Carte d'identité","Visa si nécessaire","Assurance voyage","Réservations imprimées","Carte européenne assurance maladie"]},{"category":"Santé","items":["Crème solaire","Répulsifs anti-moustiques","Trousse pharmacie","Médicaments habituels"]},{"category":"Vêtements","items":["Adaptés météo locale","Chaussures de marche","Tenue de soirée","Imperméable"]},{"category":"Technologie","items":["Adaptateur électrique","Chargeurs","Batterie externe","Téléphone"]},{"category":"Divers","items":["Argent local","Carte bancaire","Cadenas","Sac à dos de jour"]}]}`;
+  const JSON_FORMAT = `{"intro":"Message chaleureux (2 phrases)","days":[{"num":1,"title":"Titre","location":"Lieu précis","morning":"Matin avec vrais lieux","afternoon":"Après-midi","evening":"Restaurant réel + soirée","tip":"Astuce"}],"remarkable_sites":[{"name":"Nom officiel","label":"UNESCO/Grand Site/etc","location":"Adresse","description":"Description","website":"URL","coords":[lat,lon]}],"accommodations":[{"name":"Nom exact","type":"Type","location":"Adresse","price":"Prix/nuit","why":"Raison","website":"Site","coords":[lat,lon]}],"restaurants":[{"name":"Nom","cuisine":"Cuisine","specialty":"Plat","price":"€","tip":"Conseil","address":"Adresse","website":"Site","coords":[lat,lon]}],"hikes":[{"name":"Nom sentier","distance":"X km","duration":"X h","difficulty":"Facile/Moyen/Difficile","highlights":"Vue","start_point":"Départ précis","transport_from_center":"Comment y aller","coords_start":[lat,lon]}],"activities":[{"name":"Nom","duration":"Durée","price":"Prix","info":"Info","address":"Adresse","website":"Site","coords":[lat,lon]}],"agenda":[{"type":"positive","name":"Événement","date":"Date","description":"Détails"},{"type":"negative","name":"Perturbation","date":"Date","description":"Impact"},{"type":"info","name":"Jour férié","date":"Date","description":"Impact"}],"tips":["conseil1","conseil2","conseil3","conseil4","conseil5"],"budget":{"accommodation":"X€/nuit","meals":"X€/jour","activities":"X€/jour","transport":"X€/jour","total":"Total"},"packing_essentials":[{"category":"Documents","items":["Passeport","Carte d'identité","Assurance voyage"]},{"category":"Santé","items":["Crème solaire","Trousse pharmacie"]},{"category":"Vêtements","items":["Adaptés météo","Chaussures marche"]},{"category":"Technologie","items":["Adaptateur","Chargeurs"]},{"category":"Divers","items":["Argent local","Carte bancaire"]}]}`;
 
-  const systemForm = `Tu es Sofia, conseillère de voyage experte et passionnée pour "On The Road Again". Tu réponds TOUJOURS en français.
-Réponds UNIQUEMENT avec du JSON valide, sans texte avant ou après, sans balises markdown.
-Format JSON exact :
-${JSON_FORMAT}
+  const systemForm = `Tu es Sofia, conseillère de voyage experte pour "On The Road Again". Tu réponds TOUJOURS en français.
+Réponds UNIQUEMENT avec du JSON valide, sans texte avant ni après, sans balises markdown.
+Format JSON exact : ${JSON_FORMAT}
 Règles :
 - Génère exactement le bon nombre de jours selon les nuits
-- Noms RÉELS et précis avec adresses quand possible
-- Coordonnées GPS réelles [latitude, longitude] pour chaque lieu
-- Agenda : inclure événements positifs (festivals, concerts, marchés) ET négatifs (grèves, travaux, fermetures) aux dates du voyage, plus jours fériés
-- Si hébergement précis mentionné, le mettre en PREMIER dans accommodations puis proposer 2-3 alternatives
-- Inclure les incontournables de la destination même si non demandés`;
+- Noms RÉELS et précis avec adresses
+- Coordonnées GPS réelles [latitude, longitude]
+- Agenda : événements positifs ET négatifs aux dates + jours fériés
+- Si hébergement précis mentionné, le mettre EN PREMIER puis alternatives
+- Inclure les incontournables même si non demandés
+- Si un document ou une photo est fourni, en extraire TOUTES les informations utiles et les intégrer au plan`;
 
-  const systemChat = `Tu es Sofia, conseillère de voyage experte pour "On The Road Again". Tu réponds TOUJOURS en français. Tu es chaleureuse et enthousiaste.
-${currentPlan ? `Le client a un plan de voyage actuel :
-Destination : ${currentPlan.destination || ''}
-Plan complet : ${JSON.stringify(currentPlan)}
-
-Si le client demande de MODIFIER ce plan (changer un jour, ajouter/supprimer une journée, modifier hébergement, ajouter activité, etc.), réponds avec le JSON COMPLET mis à jour au même format, sans texte avant ni après.
-Si le client pose une question ou fait une conversation normale, réponds en français naturel.` : `Réponds en français naturel.`}
-RÈGLE ABSOLUE : Ne jamais montrer de code JSON brut à l'utilisateur dans tes réponses texte. Signe — Sofia 🌍`;
+  const systemChat = `Tu es Sofia, conseillère de voyage experte pour "On The Road Again". Tu réponds TOUJOURS en français. Tu es chaleureuse.
+${currentPlan ? `Plan actuel (destination: ${currentPlan.destination||''}) : ${JSON.stringify(currentPlan)}
+Si modification demandée : réponds avec le JSON COMPLET mis à jour, sans texte avant ni après.
+Si question : réponds en français naturel.` : 'Réponds en français naturel.'}
+RÈGLE : Ne jamais montrer de JSON brut. Signe — Sofia 🌍`;
 
   try {
-    const isForm = !!formData;
+    const isForm = !!(formData || fileData);
     const system = isForm ? systemForm : systemChat;
-    const allMessages = isForm ? [{
-      role: "user",
-      content: `Crée mon plan :
+    let allMessages;
+
+    if (isForm) {
+      const content = [];
+      if (fileData && fileType) {
+        if (fileType.startsWith('image/')) {
+          content.push({ type: "image", source: { type: "base64", media_type: fileType, data: fileData } });
+        } else if (fileType === 'application/pdf') {
+          content.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: fileData } });
+        }
+      }
+      let textPrompt = fileData && !formData
+        ? `Voici un document ou une photo contenant mes souhaits de voyage. Analyse-le entièrement et crée un plan de voyage complet en JSON en extrayant toutes les informations utiles. Complète avec tes meilleures recommandations.`
+        : `Crée mon plan de vacances complet :
 Destination : ${formData.destination}
 Départ depuis : ${formData.depart || "Non précisé"}
-Comment s'y rendre : ${formData.transport_to || "Non précisé"}${formData.transport_to_autre ? " — " + formData.transport_to_autre : ""}
+Comment s'y rendre : ${Array.isArray(formData.transport_to) ? formData.transport_to.join(" + ") : formData.transport_to || "Non précisé"}${formData.transport_to_autre ? " + " + formData.transport_to_autre : ""}
 Dates : ${formData.dateStart || "Flexibles"} → ${formData.dateEnd || "Flexibles"} (${formData.nuits} nuits)
 Voyageurs : ${formData.voyageurs === "Autre" ? formData.voyageurs_autre : formData.voyageurs}
 Budget : ${formData.budget === "Budget global" ? "Budget global : " + formData.budget_global : formData.budget}
@@ -87,11 +95,16 @@ Style : ${formData.styles?.join(", ") || "Varié"}${formData.style_autre ? ", " 
 Hébergement : ${formData.hebergement === "Autre" ? formData.hebergement_autre : formData.hebergement}
 Transport sur place : ${formData.transport === "Autre" ? formData.transport_autre : formData.transport}
 Besoins spéciaux : ${formData.special || "Aucun"}
-Incontournables : ${formData.musts || "Propose les incontournables de la destination"}
+Incontournables : ${formData.musts || "Propose les incontournables"}
 À éviter : ${formData.avoid || "Rien"}
 Notes : ${formData.notes || "Aucune"}
-Génère le plan complet en JSON.`
-    }] : messages;
+${fileData ? "Un document/photo est joint — analyse-le et intègre son contenu." : ""}
+Génère le plan complet en JSON.`;
+      content.push({ type: "text", text: textPrompt });
+      allMessages = [{ role: "user", content }];
+    } else {
+      allMessages = messages;
+    }
 
     const text = await callClaude(system, allMessages);
     const json = extractJSON(text);
