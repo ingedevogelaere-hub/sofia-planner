@@ -529,9 +529,31 @@ ${plan?.tips?.length?sec("💡 Conseils",tipsH):""}${plan?.budget?sec("💰 Budg
                   <input style={inp} value={form.depart} onChange={e=>setF("depart",e.target.value)} placeholder="Luxembourg, Paris, Bruxelles…"/>
                 </div>
               </div>
-              <div style={{background:COLORS.cream,border:"1px solid "+COLORS.parch,borderRadius:6,padding:"14px 16px"}}>
+<div style={{background:COLORS.cream,border:"1px solid "+COLORS.parch,borderRadius:6,padding:"14px 16px"}}>
                 <span style={lbl}>Dates du séjour</span>
-                <div style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:10,alignItems:"center",marginBottom:10}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+                  <div>
+                    <div style={{fontSize:10,color:COLORS.mist,marginBottom:4,fontFamily:"'DM Mono',monospace",letterSpacing:1}}>📅 DATE DE DÉPART</div>
+                    <input type="date" style={inp} value={form.dateStart} onChange={e=>handleDate("dateStart",e.target.value)}/>
+                  </div>
+                  <div id="field-nuits">
+                    <div style={{fontSize:10,color:COLORS.mist,marginBottom:4,fontFamily:"'DM Mono',monospace",letterSpacing:1}}>🌙 NOMBRE DE NUITS</div>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <button onClick={()=>setF("nuits",Math.max(1,form.nuits-1))} style={{width:36,height:36,border:"1.5px solid "+COLORS.parch,borderRadius:4,background:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>−</button>
+                      <div style={{flex:1,textAlign:"center",fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:700,color:COLORS.gold}}>{form.nuits}</div>
+                      <button onClick={()=>setF("nuits",Math.min(90,form.nuits+1))} style={{width:36,height:36,border:"1.5px solid "+COLORS.parch,borderRadius:4,background:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>+</button>
+                    </div>
+                  </div>
+                </div>
+                {form.dateStart && (()=>{
+                  const end = new Date(form.dateStart);
+                  end.setDate(end.getDate()+form.nuits);
+                  const endStr = end.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+                  return <div style={{padding:"10px 14px",background:"#fff",border:"1.5px solid "+COLORS.gold,borderRadius:4,fontSize:13,color:COLORS.ink}}>
+                    🏠 Retour le <strong>{endStr}</strong>
+                  </div>;
+                })()}
+              </div>
                   <div>
                     <div style={{fontSize:10,color:COLORS.mist,marginBottom:4,fontFamily:"'DM Mono',monospace",letterSpacing:1}}>DÉPART</div>
                     <input type="date" style={inp} value={form.dateStart} onChange={e=>handleDate("dateStart",e.target.value)}/>
