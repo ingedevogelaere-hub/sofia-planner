@@ -577,7 +577,7 @@ ${plan?.tips?.length?sec("💡 Conseils",tipsH):""}${plan?.budget?sec("💰 Budg
                   🛣️ Trajet : {form.transport_to.join(" → ")}
                 </div>
               )}
-              <input style={inp} value={form.transport_to_autre} onChange={e=>setF("transport_to_autre",e.target.value)} placeholder="Précise ou ajoute une info (ex: ferry depuis Toulon)…"/>
+              <input style={inp} value={form.transport_to_autre} onChange={e=>setF("transport_to_autre",e.target.value)} placeholder={form.transport_to.includes("⛴️ Ferry") && form.destination ? `ex: ferry vers ${form.destination} — port et horaire` : form.transport_to.includes("✈️ Avion") && form.depart ? `ex: vol depuis ${form.depart||"Luxembourg"} avec escale` : form.transport_to.includes("🚄 Train") ? `ex: départ depuis ${form.depart||"Luxembourg"}, correspondances` : "Précise les détails de ton trajet…"}/>
             </div>
 
             {/* 3 - Voyageurs & budget */}
