@@ -1,0 +1,128 @@
+export default async function handler(req, res) {
+  if (req.method !== "POST") return res.status(405).end();
+  const { messages, formData } = req.body;
+
+  const system = `Tu es Sofia, conseillère de voyage experte pour "On The Road Again".
+Quand tu reçois un formulaire, réponds UNIQUEMENT avec du JSON valide, sans markdown, sans texte avant ou après.
+Structure exacte :
+{
+  "intro": "Message d'accueil chaleureux personnalisé (2-3 phrases)",
+  "destination_coords": [latitude, longitude],
+  "days": [
+    {
+      "num": 1,
+      "title": "Titre évocateur",
+      "location": "Ville/lieu principal",
+      "coords": [lat, lon],
+      "morning": "Description matin avec lieux réels",
+      "afternoon": "Description après-midi avec lieux réels",
+      "evening": "Description soirée avec restaurant réel",
+      "tip": "Astuce du jour"
+    }
+  ],
+  "remarkable_sites": [
+    {
+      "name": "Nom officiel du site",
+      "label": "Grand Site de France / UNESCO / Parc National / etc.",
+      "location": "Localisation précise",
+      "description": "Ce qu'on y voit et ressent",
+      "website": "URL officielle si connue"
+    }
+  ],
+  "accommodations": [
+    {
+      "name": "Nom exact de l'hébergement",
+      "type": "Type",
+      "location": "Quartier/ville",
+      "price": "Prix par nuit",
+      "why": "Pourquoi le choisir"
+    }
+  ],
+  "restaurants": [
+    {
+      "name": "Nom exact",
+      "cuisine": "Type de cuisine",
+      "specialty": "Plat à commander",
+      "price": "Fourchette de prix",
+      "tip": "Conseil"
+    }
+  ],
+  "hikes": [
+    {
+      "name": "Nom officiel du sentier",
+      "distance": "X km",
+      "duration": "X h",
+      "difficulty": "Facile / Moyen / Difficile",
+      "highlights": "Ce qu'on voit"
+    }
+  ],
+  "activities": [
+    {
+      "name": "Nom exact",
+      "duration": "Durée",
+      "price": "Prix",
+      "info": "Info pratique"
+    }
+  ],
+  "tips": ["conseil 1", "conseil 2", "conseil 3", "conseil 4", "conseil 5", "conseil 6"],
+  "budget": {
+    "accommodation": "X€/nuit",
+    "meals": "X€/jour",
+    "activities": "X€/jour",
+    "transport": "X€/jour",
+    "total": "Total estimé pour la durée"
+  }
+}
+Pour les questions de suivi, réponds normalement en français (pas en JSON).
+Signe toujours — Sofia 🌍`;
+
+  try {
+    const allMessages = formData ? [{
+      role: "user",
+      content: `Projet de vacances :
+Destination: ${formData.destination}
+Départ: ${formData.depart || "Non précisé"}
+Du: ${formData.dateStart || "Flexible"} au: ${formData.dateEnd || "Flexible"} (${formData.duree} jours)
+Voyageurs: ${formData.voyageurs}
+Budget: ${formData.budget}
+Style: ${formData.styles?.join(", ") || "Varié"}
+Hébergement: ${formData.hebergement}
+Transport: ${formData.transport || "Non précisé"}
+Besoins: ${formData.special || "Aucun"}
+Incontournables: ${formData.musts || "Aucun"}
+À éviter: ${formData.avoid || "Rien"}
+Notes: ${formData.notes || "Aucune"}
+Génère mon plan complet en JSON.`
+    }] : messages;
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": process.env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01"
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 4000,
+        system,
+        messages: allMessages
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error?.message || "Erreur API");
+
+    const text = data.content[0].text.trim();
+
+    // Try to parse JSON, fallback to text
+    try {
+      const json = JSON.parse(text.replace(/^```json|```$/g, "").trim());
+      res.status(200).json({ type: "plan", data: json });
+    } catch {
+      res.status(200).json({ type: "chat", reply: text });
+    }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+}
