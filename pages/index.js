@@ -57,10 +57,16 @@ function buildLinks(type, dest, dateStart, dateEnd, voyageurs, voyageurs_autre, 
 
 function buildMapUrl(plan, dest) {
   if (!plan) return `https://www.google.com/maps/search/${enc(dest)}`;
-  const locs = (plan.days||[]).map(d=>d.location).filter(Boolean);
+  // Use only the first part of location (main name), add city
+  const clean = loc => {
+    if (!loc) return null;
+    const main = loc.split(',')[0].trim();
+    return main && !main.toLowerCase().includes(dest.toLowerCase().split(',')[0]) ? main+', '+dest : main;
+  };
+  const locs = (plan.days||[]).map(d=>clean(d.location)).filter(Boolean);
   if (!locs.length) return `https://www.google.com/maps/search/${enc(dest)}`;
-  if (locs.length===1) return `https://www.google.com/maps/search/${enc(locs[0]+", "+dest)}`;
-  return `https://www.google.com/maps/dir/${locs.map(l=>enc(l+", "+dest)).join("/")}`;
+  if (locs.length===1) return `https://www.google.com/maps/search/${enc(locs[0])}`;
+  return `https://www.google.com/maps/dir/${locs.map(l=>enc(l)).join("/")}`;
 }
 
 function photoUrl(dest, tag="tourism") {
@@ -391,11 +397,13 @@ export default function SofiaPlanner() {
       const data=await res.json();
       if(data.type==="plan"&&data.data?.days){
         const p={...data.data,destination:form.destination||plan?.destination||"Voyage"};
-        setPlan(p);setMsgs([...newMsgs,{role:"assistant",content:"✅ J'ai mis à jour ton plan ! — Sofia 🌍"}]);
+        setPlan(p);setMsgs([...newMsgs,{role:"assistant",content:"✅ Plan mis à jour ! Consulte les onglets pour voir les changements. — Sofia 🌍"}]);
+      }else if(data.type==="chat"&&data.reply){
+        setMsgs([...newMsgs,{role:"assistant",content:data.reply}]);
       }else{
-        setMsgs([...newMsgs,{role:"assistant",content:data.reply||"Désolée, une erreur !"}]);
+        setMsgs([...newMsgs,{role:"assistant",content:"Désolée, les serveurs sont surchargés en ce moment. Réessaie dans 1 minute ! — Sofia 🌍"}]);
       }
-    }catch{setMsgs([...newMsgs,{role:"assistant",content:"Désolée, une erreur !"}]);}
+    }catch{setMsgs([...newMsgs,{role:"assistant",content:"Désolée, erreur de connexion. Réessaie ! — Sofia 🌍"}]);}
     setChatLoad(false);
   };
 
@@ -403,7 +411,7 @@ export default function SofiaPlanner() {
     const win=window.open("","_blank");
     const dest=plan?.destination||form.destination;
     const rows=(arr,fn)=>(arr||[]).map(fn).join("");
-    const dayH=rows(plan?.days,d=>`<div style="page-break-inside:avoid;margin-bottom:20px;border:1px solid #ddd;border-radius:8px;overflow:hidden"><div style="background:#1C1A14;color:#B8972E;padding:12px 16px;font-family:Georgia,serif;font-size:15px;font-weight:700">Jour ${d.num} — ${d.title||""}${d.location?` 📍 ${d.location}`:""}</div><div style="padding:14px;font-size:12px;line-height:1.7">${d.morning?`<p><b>🌅 Matin :</b> ${d.morning}</p>`:""}${d.afternoon?`<p><b>☀️ Après-midi :</b> ${d.afternoon}</p>`:""}${d.evening?`<p><b>🌙 Soir :</b> ${d.evening}</p>`:""}${d.tip?`<p style="color:#8A9E93;font-style:italic">💡 ${d.tip}</p>`:""}</div></div>`);
+    const dayH=rows(plan?.days,d=>`<div style="page-break-inside:avoid;margin-bottom:24px;border:1px solid #ddd;border-radius:8px;overflow:hidden"><img src="https://source.unsplash.com/800x200/?${encodeURIComponent((d.location||dest)+" tourism")}" style="width:100%;height:160px;object-fit:cover;display:block" onerror="this.style.display='none'"/><div style="background:#1C1A14;color:#B8972E;padding:12px 16px;font-family:Georgia,serif;font-size:15px;font-weight:700">Jour ${d.num} — ${d.title||""}${d.location?` <span style='font-size:11px;color:#aaa'>📍 ${d.location.split(',')[0]}</span>`:""}</div><div style="padding:14px;font-size:12px;line-height:1.7;color:#333">${d.morning?`<p style="margin-bottom:8px"><b>🌅 Matin :</b> ${d.morning}</p>`:""}${d.afternoon?`<p style="margin-bottom:8px"><b>☀️ Après-midi :</b> ${d.afternoon}</p>`:""}${d.evening?`<p style="margin-bottom:8px"><b>🌙 Soir :</b> ${d.evening}</p>`:""}${d.tip?`<p style="color:#8A9E93;font-style:italic;margin-top:8px">💡 ${d.tip}</p>`:""}</div></div>`);
     const siteH=rows(plan?.remarkable_sites,s=>`<div style="margin-bottom:10px;padding:10px;border:1px solid #ddd;border-radius:4px"><b>${s.name}</b>${s.label?` [${s.label}]`:""}<br><small style="color:#B8972E">📍 ${s.location||""}</small><br>${s.description||""}</div>`);
     const hotelH=rows(plan?.accommodations,h=>`<div style="margin-bottom:10px;padding:10px;border:1px solid #ddd;border-radius:4px"><b>${h.name}</b> — ${h.type||""} — 📍 ${h.location||""} — 💰 ${h.price||""}<br><i>${h.why||""}</i></div>`);
     const restoH=rows(plan?.restaurants,r=>`<div style="margin-bottom:10px;padding:10px;border:1px solid #ddd;border-radius:4px"><b>${r.name}</b> — ${r.cuisine||""} — 💰 ${r.price||""}<br>📍 ${r.address||""}<br>⭐ ${r.specialty||""}</div>`);
@@ -415,11 +423,14 @@ export default function SofiaPlanner() {
     const budH=`<table style="width:100%;font-size:12px">${[["🏨",b.accommodation],["🍽️",b.meals],["🎯",b.activities],["🚗",b.transport]].map(([l,v])=>v?`<tr><td>${l} ${l==="🏨"?"Hébergement":l==="🍽️"?"Repas":l==="🎯"?"Activités":"Transport"}</td><td style="text-align:right;font-weight:600">${v}</td></tr>`:"").join("")}<tr style="font-weight:700;color:#C1440E"><td>TOTAL ESTIMÉ</td><td style="text-align:right">${b.total||"—"}</td></tr></table>`;
     const sec=(t,h)=>h?`<div style="page-break-before:always;padding:20px 0"><h2 style="font-family:Georgia,serif;color:#1C1A14;border-bottom:2px solid #B8972E;padding-bottom:8px;margin-bottom:16px">${t}</h2>${h}</div>`:"";
     const mapUrl=buildMapUrl(plan,dest);
-    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Sofia — ${dest}</title><style>body{font-family:Arial,sans-serif;margin:24px;color:#333}@media print{body{margin:0;padding:20px}.no-print{display:none}}</style></head><body>
-<div style="background:#1C1A14;color:#fff;padding:24px;text-align:center;border-radius:8px;margin-bottom:24px">
-  <div style="font-size:10px;letter-spacing:4px;color:#B8972E">✦ ON THE ROAD AGAIN ✦</div>
-  <h1 style="font-family:Georgia,serif;font-size:30px;margin:8px 0">${dest}</h1>
-  <div style="font-size:11px;color:#aaa">${form.nuits} NUITS${form.dateStart?" · "+form.dateStart+" → "+form.dateEnd:""}</div>
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Sofia — ${dest}</title><style>body{font-family:Arial,sans-serif;margin:24px;color:#333}img{max-width:100%}@media print{body{margin:0;padding:20px}.no-print{display:none}}</style></head><body>
+<div style="position:relative;background:#1C1A14;color:#fff;border-radius:8px;margin-bottom:24px;overflow:hidden;min-height:120px">
+  <img src="https://source.unsplash.com/1200x300/?${encodeURIComponent(dest+' city tourism')}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;opacity:0.35" onerror="this.style.display='none'"/>
+  <div style="position:relative;z-index:1;padding:28px;text-align:center">
+    <div style="font-size:10px;letter-spacing:4px;color:#B8972E">✦ ON THE ROAD AGAIN ✦</div>
+    <h1 style="font-family:Georgia,serif;font-size:30px;margin:8px 0">${dest}</h1>
+    <div style="font-size:11px;color:#aaa">${form.nuits} NUITS${form.dateStart?" · "+form.dateStart+" → "+form.dateEnd:""}</div>
+  </div>
 </div>
 ${plan?.intro?`<div style="background:#f0f7f4;border-left:4px solid #2C4A3E;padding:14px;margin-bottom:20px;font-style:italic;color:#2C4A3E">${plan.intro}</div>`:""}
 <div class="no-print" style="text-align:center;margin-bottom:20px"><a href="${mapUrl}" target="_blank" style="display:inline-block;padding:10px 20px;background:#4285F4;color:#fff;border-radius:4px;text-decoration:none">🗺️ Voir l'itinéraire sur Google Maps</a></div>
@@ -758,7 +769,21 @@ ${plan?.tips?.length?sec("💡 Conseils",tipsH):""}${plan?.budget?sec("💰 Budg
               <div style={{maxWidth:720,margin:"0 auto"}}>
                 {tab==="days"  &&(plan.days||[]).map((d,i)=><DayCard key={i} d={d} form={{...form,destination:destForDisplay}}/>)}
                 {tab==="agenda"&&<AgendaSection agenda={plan.agenda}/>}
-                {tab==="sites" &&(<><LinkBar type="remarkable_sites" dest={destForDisplay} dateStart={form.dateStart} dateEnd={form.dateEnd} voyageurs={form.voyageurs} voyageurs_autre={form.voyageurs_autre}/><div style={{height:12}}/>{(plan.remarkable_sites||[]).map((s,i)=><ItemCard key={i} item={s} type="remarkable_sites" i={i} form={{...form,destination:destForDisplay}}/>)}</>)}
+                {tab==="sites" &&(<>
+                  {plan.tourism_office?.website&&(
+                    <div style={{background:"#fff",border:"1.5px solid #B8972E",borderRadius:8,padding:"16px 18px",marginBottom:16,display:"flex",gap:12,alignItems:"center"}}>
+                      <div style={{fontSize:28,flexShrink:0}}>🏛️</div>
+                      <div style={{flex:1}}>
+                        <div style={{fontFamily:"'Playfair Display',serif",fontSize:15,fontWeight:700,marginBottom:4}}>Office de Tourisme officiel</div>
+                        <div style={{fontSize:13,color:"#4a4640",marginBottom:6}}>{plan.tourism_office.name}</div>
+                        {plan.tourism_office.address&&<div style={{fontSize:12,color:"#8A9E93",marginBottom:4}}>📍 {plan.tourism_office.address}</div>}
+                        {plan.tourism_office.phone&&<div style={{fontSize:12,color:"#8A9E93",marginBottom:6}}>📞 {plan.tourism_office.phone}</div>}
+                        <a href={plan.tourism_office.website} target="_blank" rel="noopener noreferrer" style={{display:"inline-block",padding:"7px 14px",background:"#B8972E",color:"#fff",borderRadius:4,fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:1}}>🌐 Site officiel</a>
+                      </div>
+                    </div>
+                  )}
+                  <LinkBar type="remarkable_sites" dest={destForDisplay} dateStart={form.dateStart} dateEnd={form.dateEnd} voyageurs={form.voyageurs} voyageurs_autre={form.voyageurs_autre}/><div style={{height:12}}/>{(plan.remarkable_sites||[]).map((s,i)=><ItemCard key={i} item={s} type="remarkable_sites" i={i} form={{...form,destination:destForDisplay}}/>)}
+                </>)}
                 {tab==="hotels"&&(plan.accommodations||[]).map((h,i)=><ItemCard key={i} item={h} type="accommodations" i={i} form={{...form,destination:destForDisplay}}/>)}
                 {tab==="restos"&&(plan.restaurants||[]).map((r,i)=><ItemCard key={i} item={r} type="restaurants" i={i} form={{...form,destination:destForDisplay}}/>)}
                 {tab==="hikes" &&(plan.hikes||[]).map((h,i)=><ItemCard key={i} item={h} type="hikes" i={i} form={{...form,destination:destForDisplay}}/>)}
