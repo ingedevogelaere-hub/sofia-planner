@@ -808,7 +808,7 @@ window.onload=function(){
               </div>
               <div style={{display:"flex",gap:8}}>
                 <input value={chatIn} onChange={e=>setChatIn(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendChat()}
-                  placeholder={"Chat avec Sofia"PH} disabled={chatLoad}
+                  placeholder={"Chat avec Sofia"} disabled={chatLoad}
                   style={{flex:1,padding:"9px 13px",border:"1.5px solid "+C.parch,borderRadius:20,background:C.cream,fontFamily:"'DM Sans',sans-serif",fontSize:12,color:C.ink,outline:"none"}}/>
                 <button onClick={sendChat} disabled={!chatIn.trim()||chatLoad}
                   style={{padding:"9px 14px",background:chatIn.trim()&&!chatLoad?C.rust:"#ccc",color:"#fff",border:"none",borderRadius:20,cursor:chatIn.trim()&&!chatLoad?"pointer":"not-allowed",fontSize:15,flexShrink:0}}>➤</button>
