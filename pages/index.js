@@ -1,17 +1,17 @@
 import Head from "next/head";
 import { useState, useRef, useEffect } from "react";
-
+ 
 // ─── Config ────────────────────────────────────────────────
 const TP_MARKER = "";
 const UNSPLASH_KEY = "z33MKSymKePZB5EmPynqEyxjxQ5ujCrPD3Bn5-FxtYU";
 const photoCache = {};
-
+ 
 // ─── Design tokens ─────────────────────────────────────────
 const C = {
   gold:"#B8972E",rust:"#C1440E",forest:"#2C4A3E",navy:"#1A3A5C",
   ink:"#1C1A14",cream:"#FAF6EE",parch:"#EDE0C4",mist:"#8A9E93"
 };
-
+ 
 function selBtn(active,color=C.navy){
   return{padding:"9px 12px",border:"1.5px solid",borderRadius:6,textAlign:"left",width:"100%",
     background:active?color+"18":"transparent",borderColor:active?color:C.parch,
@@ -24,7 +24,7 @@ function pillBtn(active,color=C.navy){
     color:active?color:"#888",fontFamily:"'DM Sans',sans-serif",fontSize:12,cursor:"pointer",
     fontWeight:active?600:400,transition:"all .15s"};
 }
-
+ 
 // ─── Constants ─────────────────────────────────────────────
 const STYLES_LIST=["🏛️ Culture","🌿 Nature","🍷 Gastronomie","🏖️ Plages","⛰️ Montagne","🥾 Randonnées","🧗 Aventure","🎨 Art","📸 Photo","👨‍👩‍👧 Famille","🚴 Vélo","🏕️ Camping","🧘 Bien-être","🛍️ Shopping"];
 const HEBERGEMENTS=["🏨 Hôtel","🏠 Airbnb / Location","⛺ Camping","🛏️ B&B / Chambre d'hôtes","💎 Hôtel de luxe","🏡 Gîte rural","🛖 Auberge de jeunesse","🏠 Je dors chez moi"];
@@ -32,10 +32,10 @@ const BUDGETS=["🌱 Économique (< 80€/j)","💼 Moyen (80-150€/j)","✨ Co
 const TRANSPORTS_LOCAL=["🚗 Voiture de location","🚌 Transports en commun","🚲 Vélo","🚶 À pied","🛵 Scooter","🚐 Van / Camping-car"];
 const TRANSPORT_TO=["✈️ Avion","🚄 Train","🚗 Ma voiture","🚗 Voiture louée","🚌 Bus","⛴️ Ferry","🚢 Croisière","🛺 Navette"];
 const VOYAGEURS=["Solo","2 adultes","Famille (bébé 0-3 ans)","Famille (enfants 4-12 ans)","Famille (ados)","Groupe d'amis","Couple senior"];
-
+ 
 const enc=s=>encodeURIComponent(s||"");
 const enc2=s=>s?s.toLowerCase().replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,""):"";
-
+ 
 // ─── Languages ──────────────────────────────────────────────
 const LANGS=[
   {code:"FR",flag:"🇫🇷",name:"Français"},
@@ -51,7 +51,7 @@ const LANGS=[
   {code:"SV",flag:"🇸🇪",name:"Svenska"},
   {code:"DA",flag:"🇩🇰",name:"Dansk"},
 ];
-
+ 
 const T={
   FR:{
     title:"Planifie tes vacances parfaites",
@@ -380,7 +380,7 @@ const T={
     langPick:"Sprog",
   },
 };
-
+ 
 // ─── Date Range Picker ─────────────────────────────────────
 function DateRangePicker({dateStart,dateEnd,nuits,onDateStart,onDateEnd,onNuits,lang}){
   const tr=T[lang]||T.FR;
@@ -504,9 +504,9 @@ function DateRangePicker({dateStart,dateEnd,nuits,onDateStart,onDateEnd,onNuits,
     </div>
   );
 }
-
+ 
 function getAdults(v,a){const val=v==="Autre"?(a||""):(v||"");if(val==="Solo")return 1;if(val.includes("2 adultes")||val.includes("Couple"))return 2;if(val.includes("Groupe"))return 4;return 2;}
-
+ 
 // ─── Unsplash photo hook ────────────────────────────────────
 function usePhoto(query){
   const fallback=`https://picsum.photos/seed/${enc2(query||"travel")}/800/400`;
@@ -522,7 +522,7 @@ function usePhoto(query){
   },[query]);
   return src;
 }
-
+ 
 function Photo({query,h=140}){
   const src=usePhoto(query);
   return(
@@ -531,7 +531,7 @@ function Photo({query,h=140}){
     </div>
   );
 }
-
+ 
 // HeroPhoto: separate component so usePhoto hook is called correctly (never conditionally)
 function HeroPhoto({query}){
   const src=usePhoto(query);
@@ -539,7 +539,7 @@ function HeroPhoto({query}){
     <img src={src} alt="" style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",objectFit:"cover",opacity:.55}} loading="lazy"/>
   );
 }
-
+ 
 // ─── Link builders ──────────────────────────────────────────
 function buildLinks(type,dest,dateStart,dateEnd,voy,voyA,itemName=""){
   const adults=getAdults(voy,voyA);
@@ -572,7 +572,7 @@ function buildLinks(type,dest,dateStart,dateEnd,voy,voyA,itemName=""){
     default:return[];
   }
 }
-
+ 
 function buildMapUrl(plan,dest){
   if(!plan||!dest||dest==="Voyage") return `https://www.google.com/maps/search/${enc(dest||"voyage")}`;
   const clean=loc=>{
@@ -587,7 +587,7 @@ function buildMapUrl(plan,dest){
   if(locs.length===1) return `https://www.google.com/maps/search/${enc(locs[0])}`;
   return `https://www.google.com/maps/dir/${locs.map(l=>enc(l)).join("/")}`;
 }
-
+ 
 // ─── Small UI components ────────────────────────────────────
 function LinkBar({type,dest,dateStart,dateEnd,voy,voyA,itemName,itemWebsite}){
   const links=buildLinks(type,dest,dateStart,dateEnd,voy,voyA,itemName);
@@ -598,7 +598,7 @@ function LinkBar({type,dest,dateStart,dateEnd,voy,voyA,itemName,itemWebsite}){
     </div>
   );
 }
-
+ 
 function NoteField({id}){
   const [open,setOpen]=useState(false);const [val,setVal]=useState("");
   return(
@@ -611,11 +611,11 @@ function NoteField({id}){
     </div>
   );
 }
-
+ 
 function Chip({label,bg=C.parch,color=C.ink}){
   return<span style={{display:"inline-block",padding:"3px 9px",borderRadius:100,background:bg,color,fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:1,textTransform:"uppercase",flexShrink:0}}>{label}</span>;
 }
-
+ 
 function DayCard({d,form,plan,setTab}){
   const photoQuery=d.unsplash_query||(d.location?`${d.location} ${form.destination} paysage`:form.destination+" paysage");
   return(
@@ -647,7 +647,7 @@ function DayCard({d,form,plan,setTab}){
     </div>
   );
 }
-
+ 
 function OutingCard({item,i,form}){
   const isHike=item.type==="randonnée";
   const photoQuery=item.unsplash_query||(item.name?`${item.name} ${form.destination}`:`${form.destination} ${isHike?"randonnée":"activité"}`);
@@ -677,7 +677,7 @@ function OutingCard({item,i,form}){
     </div>
   );
 }
-
+ 
 function ItemCard({item,type,i,form}){
   const photoQuery=item.unsplash_query||(item.name?`${item.name} ${form.destination}`:`${form.destination} ${type==="accommodations"?"hôtel":type==="restaurants"?"restaurant":"tourisme"}`);
   const coordUrl=item.coords?`https://www.google.com/maps/search/?api=1&query=${item.coords[0]},${item.coords[1]}`:null;
@@ -701,7 +701,7 @@ function ItemCard({item,type,i,form}){
     </div>
   );
 }
-
+ 
 function AgendaSection({agenda}){
   if(!agenda?.length) return<div style={{textAlign:"center",padding:40,color:C.mist,fontStyle:"italic"}}>Aucune info particulière aux dates de votre voyage.</div>;
   const cols={positive:{bg:"#e8f5e9",border:"#2e7d32",icon:"🎉"},negative:{bg:"#fce4ec",border:"#c62828",icon:"⚠️"},info:{bg:"#e3f2fd",border:"#1565c0",icon:"ℹ️"}};
@@ -725,7 +725,7 @@ function AgendaSection({agenda}){
     </div>
   );
 }
-
+ 
 // ─── Ma Valise with per-category custom items ───────────────
 function PackingSection({packing}){
   const [catExtras,setCatExtras]=useState({});
@@ -742,7 +742,7 @@ function PackingSection({packing}){
   };
   const addMy=()=>{if(newItem.trim()){setMyItems(m=>[...m,newItem.trim()]);setNewItem("");}};
   const icons={"Documents":"📄","Santé":"💊","Vêtements":"👕","Technologie":"🔌","Divers":"📦"};
-
+ 
   return(
     <div>
       {(packing||[]).map((cat,ci)=>(
@@ -793,7 +793,7 @@ function PackingSection({packing}){
     </div>
   );
 }
-
+ 
 // ─── File Upload ────────────────────────────────────────────
 function FileUpload({file,onFile,onClear}){
   const ref=useRef();const [drag,setDrag]=useState(false);
@@ -847,7 +847,7 @@ function FileUpload({file,onFile,onClear}){
     </div>
   );
 }
-
+ 
 // ─── Main Component ─────────────────────────────────────────
 export default function SofiaPlanner(){
   const [phase,setPhase]=useState("form");
@@ -864,7 +864,7 @@ export default function SofiaPlanner(){
   const tr=T[lang]||T.FR;
   const bottomRef=useRef(null);
   useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"});},[msgs]);
-
+ 
   const [form,setForm]=useState({
     destination:"",depart:"",dateStart:"",dateEnd:"",nuits:7,
     voyageurs:"",voyageurs_autre:"",budget:"",budget_global:"",
@@ -874,7 +874,7 @@ export default function SofiaPlanner(){
   });
   const setF=(k,v)=>setForm(f=>({...f,[k]:v}));
   const toggleArr=(k,v)=>setF(k,form[k].includes(v)?form[k].filter(x=>x!==v):[...form[k],v]);
-
+ 
   const handleDate=(k,v)=>{
     setF(k,v);
     const start=k==="dateStart"?v:form.dateStart;
@@ -885,7 +885,7 @@ export default function SofiaPlanner(){
       else setErrors(e=>({...e,dateEnd:"La date de retour doit être après le départ"}));
     }
   };
-
+ 
   const validate=()=>{
     const e={};
     if(!uploadedFile&&!form.destination.trim()) e.destination="Destination obligatoire";
@@ -896,7 +896,7 @@ export default function SofiaPlanner(){
     if(Object.keys(e).length>0) document.getElementById("field-"+Object.keys(e)[0])?.scrollIntoView({behavior:"smooth",block:"center"});
     return Object.keys(e).length===0;
   };
-
+ 
   const generate=async()=>{
     if(!validate()) return;
     setPhase("loading");setOverloaded(false);
@@ -913,7 +913,7 @@ export default function SofiaPlanner(){
       }else{setPhase("form");setOverloaded(true);}
     }catch(err){setPhase("form");setOverloaded(true);}
   };
-
+ 
   const sendChat=async()=>{
     if(!chatIn.trim()||chatLoad) return;
     const userMsg={role:"user",content:chatIn.trim()};
@@ -933,9 +933,9 @@ export default function SofiaPlanner(){
     }catch{setMsgs([...newMsgs,{role:"assistant",content:"Désolée, erreur de connexion. Réessaie ! — Sofia 🌍"}]);}
     setChatLoad(false);
   };
-
+ 
   const destDisplay=plan?.destination||form.destination||"";
-
+ 
   // Transport placeholder dynamique
   const transportPlaceholder=(()=>{
     const dest=form.destination||"la destination";
@@ -946,7 +946,7 @@ export default function SofiaPlanner(){
     if((form.transport_to||[]).includes("🚗 Ma voiture")) return `ex: itinéraire autoroute depuis ${dep}, durée estimée`;
     return "Précise les détails de ton trajet…";
   })();
-
+ 
   const openPDF=()=>{
     const win=window.open("","_blank");
     const dest=destDisplay;
@@ -994,7 +994,7 @@ window.onload=function(){
 </body></html>`);
     win.document.close();
   };
-
+ 
   const TABS=[
     {k:"days",l:"🗺️ Itinéraire",n:plan?.days?.length},
     {k:"agenda",l:"📅 À noter",n:plan?.agenda?.length},
@@ -1006,12 +1006,12 @@ window.onload=function(){
     {k:"budget",l:"💰 Budget",n:null},
     {k:"packing",l:"🧳 Ma Valise",n:null},
   ];
-
+ 
   const inp={width:"100%",padding:"11px 14px",border:"none",background:"transparent",fontFamily:"'DM Sans',sans-serif",fontSize:13,color:C.ink,outline:"none",boxSizing:"border-box"};
   const inpBox={border:"1.5px solid "+C.parch,borderRadius:6,background:C.cream,overflow:"hidden"};
   const lbl={display:"block",fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:2,textTransform:"uppercase",color:C.gold,marginBottom:7};
   const secT=t=><div style={{fontFamily:"'Playfair Display',serif",fontSize:16,fontWeight:700,marginBottom:14}}>{t}</div>;
-
+ 
   return(
     <>
       <Head><title>Sofia Planner · On The Road Again</title></Head>
@@ -1036,7 +1036,7 @@ window.onload=function(){
         }
         @media print{.np{display:none!important}body{background:#fff!important}}
       `}</style>
-
+ 
       {/* HEADER */}
       <div className="np" style={{background:C.ink,padding:"12px 16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:100,boxShadow:"0 2px 8px rgba(0,0,0,.4)"}}>
         <div style={{width:36,height:36,borderRadius:"50%",background:"linear-gradient(135deg,#B8972E,#C1440E)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>🌍</div>
@@ -1062,7 +1062,7 @@ window.onload=function(){
           </div>
         )}
       </div>
-
+ 
       {/* ══ FORM ══ */}
       {phase==="form"&&(
         <div style={{maxWidth:760,margin:"0 auto",padding:"24px 16px 80px"}}>
@@ -1071,7 +1071,7 @@ window.onload=function(){
             <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:"clamp(24px,5vw,44px)",fontWeight:900,lineHeight:1.1}}>Planifie tes <em style={{color:C.rust}}>vacances parfaites</em></h1>
             <p style={{color:C.mist,fontSize:14,marginTop:10,maxWidth:480,margin:"10px auto 0"}}>Sofia crée ton plan complet avec itinéraire, incontournables, hébergements, restaurants, sorties et valise</p>
           </div>
-
+ 
           {overloaded&&(
             <div style={{background:"#fff3cd",border:"1.5px solid "+C.gold,borderRadius:6,padding:"14px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10}}>
               <span style={{fontSize:20,flexShrink:0}}>⏳</span>
@@ -1079,10 +1079,10 @@ window.onload=function(){
               <button onClick={()=>setOverloaded(false)} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#aaa"}}>×</button>
             </div>
           )}
-
+ 
           <div style={{background:"#fff",border:"1.5px solid "+C.parch,borderRadius:8,padding:"24px 20px",boxShadow:"5px 5px 0 "+C.parch}}>
             <FileUpload file={uploadedFile} onFile={setUploadedFile} onClear={()=>setUploadedFile(null)}/>
-
+ 
             {/* Destination & dates */}
             <div style={{marginBottom:24,paddingBottom:24,borderBottom:"1px solid "+C.parch}}>
               {secT("📍 Destination & dates")}
@@ -1107,7 +1107,7 @@ window.onload=function(){
                 {errors.dateEnd&&<div style={{fontSize:11,color:C.rust,marginTop:4}}>⚠️ {errors.dateEnd}</div>}
               </div>
             </div>
-
+ 
             {/* Transport aller - multi-select */}
             <div style={{marginBottom:24,paddingBottom:24,borderBottom:"1px solid "+C.parch}}>
               {secT("✈️ Comment vous y rendre")}
@@ -1118,7 +1118,7 @@ window.onload=function(){
               {form.transport_to.length>0&&<div style={{padding:"8px 12px",background:C.navy+"11",border:"1px solid "+C.navy,borderRadius:4,marginBottom:8,fontSize:12,color:C.navy,fontWeight:600}}>🛣️ {form.transport_to.join(" → ")}</div>}
               <div style={inpBox}><input style={inp} value={form.transport_to_autre} onChange={e=>setF("transport_to_autre",e.target.value)} placeholder={transportPlaceholder}/></div>
             </div>
-
+ 
             {/* Voyageurs & budget */}
             <div style={{marginBottom:24,paddingBottom:24,borderBottom:"1px solid "+C.parch}}>
               {secT("👥 Voyageurs & budget")}
@@ -1142,7 +1142,7 @@ window.onload=function(){
                 </div>
               </div>
             </div>
-
+ 
             {/* Style & hébergement */}
             <div style={{marginBottom:24,paddingBottom:24,borderBottom:"1px solid "+C.parch}}>
               {secT("🎯 Style & hébergement")}
@@ -1174,7 +1174,7 @@ window.onload=function(){
                 </div>
               </div>
             </div>
-
+ 
             {/* Envies */}
             <div style={{marginBottom:24}}>
               {secT("✨ Tes envies & besoins")}
@@ -1185,7 +1185,7 @@ window.onload=function(){
                 <div><span style={lbl}>Autres informations</span><div style={inpBox}><textarea style={{...inp,height:70,resize:"none",padding:"10px 14px"}} value={form.notes} onChange={e=>setF("notes",e.target.value)} placeholder="Passionné de plongée, fan de gastronomie locale…"/></div></div>
               </div>
             </div>
-
+ 
             <button onClick={generate} style={{width:"100%",padding:"16px",background:C.rust,color:"#fff",border:"none",borderRadius:6,fontFamily:"'Playfair Display',serif",fontStyle:"italic",fontSize:19,cursor:"pointer"}}>
               {uploadedFile?tr.btnFile:tr.btn}
             </button>
@@ -1195,7 +1195,7 @@ window.onload=function(){
           </div>
         </div>
       )}
-
+ 
       {/* ══ LOADING ══ */}
       {phase==="loading"&&(
         <div style={{textAlign:"center",padding:"100px 24px"}}>
@@ -1210,12 +1210,12 @@ window.onload=function(){
           </div>
         </div>
       )}
-
+ 
       {/* ══ RESULT ══ */}
       {phase==="result"&&plan&&(
         <div className="result-layout" style={{display:"flex",height:"calc(100vh - 60px)"}}>
           <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",minWidth:0}}>
-
+ 
             {/* Hero */}
             <div style={{position:"relative",height:200,overflow:"hidden",background:C.ink,flexShrink:0}}>
               <HeroPhoto query={destDisplay ? `${destDisplay} ville paysage panoramique` : "travel landscape"}/>
@@ -1228,7 +1228,7 @@ window.onload=function(){
                 {form.dateStart&&<div style={{fontFamily:"'DM Mono',monospace",fontSize:8,color:"rgba(255,255,255,.5)",marginTop:4}}>{form.dateStart} → {form.dateEnd}</div>}
               </div>
             </div>
-
+ 
             {/* Map */}
             {showMap&&(
               <div style={{flexShrink:0,borderBottom:"1px solid "+C.parch}}>
@@ -1242,14 +1242,14 @@ window.onload=function(){
                 <iframe src={`https://maps.google.com/maps?q=${enc(destDisplay)}&output=embed&z=12`} width="100%" height="260" style={{border:"none",display:"block"}} loading="lazy" title="Carte"/>
               </div>
             )}
-
+ 
             {plan.intro&&(
               <div style={{padding:"14px 18px",background:"#f0f7f4",borderBottom:"1px solid "+C.parch,display:"flex",gap:10,flexShrink:0}}>
                 <div style={{width:28,height:28,borderRadius:"50%",background:"linear-gradient(135deg,#B8972E,#C1440E)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0}}>🌍</div>
                 <div style={{fontSize:13,lineHeight:1.65,color:C.forest,fontStyle:"italic"}}>{plan.intro}</div>
               </div>
             )}
-
+ 
             {/* Tabs */}
             <div style={{display:"flex",overflowX:"auto",borderBottom:"1px solid "+C.parch,background:"#fff",flexShrink:0}}>
               {TABS.map(t=>(
@@ -1259,7 +1259,7 @@ window.onload=function(){
                 </button>
               ))}
             </div>
-
+ 
             {/* Tab content */}
             <div style={{flex:1,overflowY:"auto",padding:"16px"}}>
               <div style={{maxWidth:720,margin:"0 auto"}}>
@@ -1324,12 +1324,12 @@ window.onload=function(){
                 {tab==="packing"&&<PackingSection packing={plan.packing_essentials}/>}
               </div>
             </div>
-
+ 
             <div style={{textAlign:"center",padding:10,borderTop:"1px solid "+C.parch,fontFamily:"'DM Mono',monospace",fontSize:7,letterSpacing:2,color:"#aaa",flexShrink:0}}>
               Sofia Planner · On The Road Again{TP_MARKER?" · Liens partenaires":""}
             </div>
           </div>
-
+ 
           {/* CHAT */}
           <div className="chat-panel" style={{width:320,display:"flex",flexDirection:"column",background:"#fff",borderLeft:"1px solid "+C.parch,flexShrink:0}}>
             <div style={{padding:"12px 14px",borderBottom:"1px solid "+C.parch,background:C.cream,flexShrink:0}}>
