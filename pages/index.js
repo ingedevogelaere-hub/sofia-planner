@@ -36,6 +36,475 @@ const VOYAGEURS=["Solo","2 adultes","Famille (bébé 0-3 ans)","Famille (enfants
 const enc=s=>encodeURIComponent(s||"");
 const enc2=s=>s?s.toLowerCase().replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,""):"";
 
+// ─── Languages ──────────────────────────────────────────────
+const LANGS=[
+  {code:"FR",flag:"🇫🇷",name:"Français"},
+  {code:"EN",flag:"🇬🇧",name:"English"},
+  {code:"NL",flag:"🇳🇱",name:"Nederlands"},
+  {code:"DE",flag:"🇩🇪",name:"Deutsch"},
+  {code:"IT",flag:"🇮🇹",name:"Italiano"},
+  {code:"ES",flag:"🇪🇸",name:"Español"},
+  {code:"PT",flag:"🇵🇹",name:"Português"},
+  {code:"LU",flag:"🇱🇺",name:"Lëtzebuergesch"},
+  {code:"PL",flag:"🇵🇱",name:"Polski"},
+  {code:"RO",flag:"🇷🇴",name:"Română"},
+  {code:"SV",flag:"🇸🇪",name:"Svenska"},
+  {code:"DA",flag:"🇩🇰",name:"Dansk"},
+];
+
+const T={
+  FR:{
+    title:"Planifie tes vacances parfaites",
+    sub:"Sofia crée ton plan complet avec itinéraire, incontournables, hébergements, restaurants, sorties et valise",
+    dest:"Destination *",destPH:"Corse, Bruxelles, Kyoto…",dep:"Ville de départ",depPH:"Luxembourg, Paris, Bruxelles…",
+    dates:"Dates du séjour",from:"DÉPART",to:"RETOUR",nights:"nuits",orNights:"Ou combien de nuits si dates inconnues ?",
+    noDate:"Choisissez d'abord les dates pour voir le résumé",
+    howGet:"Comment vous y rendre",multiStep:"Plusieurs étapes possibles — ex : 🚗 + ⛴️ Ferry",
+    travelers:"Voyageurs",budget:"Budget *",globalBudget:"💵 Budget global à préciser",globalBudgetPH:"Ex: 3000€ pour 2 pers., 7 nuits…",
+    style:"Style de voyage (plusieurs choix)",heberge:"Hébergement *",localT:"Transport sur place",
+    wishes:"Tes envies & besoins",musts:"Incontournables / Rêves",mustsPH:"Calanques, plage Palombaggia…",
+    avoid:"À éviter",avoidPH:"Pas trop touristique…",special:"Besoins spéciaux",specialPH:"Végétarien, allergie…",
+    notes:"Autres informations",notesPH:"Passionné de plongée, fan de gastronomie…",
+    btn:uploadedFile?tr.btnFile:tr.btn,btnFile:tr.btnFile,
+    hint:"Destination, Budget et Hébergement sont nécessaires",hintFile:"Sofia analysera ton document pour créer un plan complet",
+    other:"✏️ Autre",stayHome:"🏠 Je dors chez moi",
+    addCat:"Ajouter dans",myStuff:"🧳 Mes affaires personnelles",myStuffPH:"Coussins, fromages, café, couteaux…",
+    note:"Ajouter une note",noteClose:"Fermer",
+    chat:tr.chat,chatSub:tr.chatSub,chatPH:tr.chatPH,
+    months:["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"],
+    days:["Lu","Ma","Me","Je","Ve","Sa","Di"],
+    loading:tr.loading,loadingFile:tr.loadingFile,
+    chatSug:tr.chatSug,
+    new:tr.new,overTitle:tr.overTitle,overSub:"Les serveurs sont surchargés. Attends 1-2 minutes et réessaie.",
+    uploadTitle:tr.uploadTitle,uploadSub:tr.uploadSub,
+    uploadCTA:tr.uploadCTA,uploadFmt:tr.uploadFmt,
+    uploadLoaded:tr.uploadLoaded,uploadHint:tr.uploadHint,
+    langPick:"Langue",
+  },
+  EN:{
+    title:"Plan your perfect vacation",
+    sub:"Sofia creates your complete plan with itinerary, must-sees, accommodations, restaurants, outings and packing list",
+    dest:"Destination *",destPH:"Corsica, Brussels, Kyoto…",dep:"Departure city",depPH:"Luxembourg, Paris, Brussels…",
+    dates:"Trip dates",from:"DEPARTURE",to:"RETURN",nights:"nights",orNights:"Or how many nights if dates unknown?",
+    noDate:"Choose dates first to see the summary",
+    howGet:"How to get there",multiStep:"Multiple legs possible — e.g. 🚗 + ⛴️ Ferry",
+    travelers:"Travelers",budget:"Budget *",globalBudget:"💵 Total budget to specify",globalBudgetPH:"E.g. €3000 for 2 people, 7 nights…",
+    style:"Travel style (multiple choices)",heberge:"Accommodation *",localT:"Local transport",
+    wishes:"Your wishes & needs",musts:"Must-sees / Dreams",mustsPH:"Calanques, Palombaggia beach…",
+    avoid:"To avoid",avoidPH:"Not too touristy…",special:"Special needs",specialPH:"Vegetarian, allergy…",
+    notes:"Other information",notesPH:"Diving enthusiast, foodie…",
+    btn:"Create my vacation plan with Sofia →",btnFile:"📎 Analyze my notes and create my plan →",
+    hint:"Destination, Budget and Accommodation are required",hintFile:"Sofia will analyze your document to create a complete plan",
+    other:"✏️ Other",stayHome:"🏠 Staying at home",
+    addCat:"Add to",myStuff:"🧳 My personal items",myStuffPH:"Pillows, cheeses, coffee, knives…",
+    note:"Add a note",noteClose:"Close",
+    chat:"Chat with Sofia",chatSub:"Request a change → plan updated",chatPH:"Ask Sofia for a change…",
+    months:["January","February","March","April","May","June","July","August","September","October","November","December"],
+    days:["Mo","Tu","We","Th","Fr","Sa","Su"],
+    loading:"Sofia is preparing your adventure…",loadingFile:"Sofia is reading your notes and preparing your adventure…",
+    chatSug:["Add a day","Change day 2","More hikes","Cheaper accommodation","Vegetarian version","Optimize budget"],
+    new:"← New",overTitle:"Generation failed",overSub:"Servers are overloaded. Wait 1-2 minutes and try again.",
+    uploadTitle:"Share your notes or ideas with Sofia",uploadSub:"Photo of a notebook, article, list… Sofia reads it all and creates your trip.",
+    uploadCTA:"Drag or click to import",uploadFmt:"JPG, PNG, PDF, TXT — max 15 MB",
+    uploadLoaded:"FILE LOADED",uploadHint:"Fill in the form to refine, or let Sofia deduce everything.",
+    langPick:"Language",
+  },
+  NL:{
+    title:"Plan jouw perfecte vakantie",sub:"Sofia maakt jouw volledig plan met reisroute, bezienswaardigheden, verblijven, restaurants, uitjes en paklijst",
+    dest:"Bestemming *",destPH:"Corsica, Brussel, Kyoto…",dep:"Vertrekstad",depPH:"Luxemburg, Parijs, Brussel…",
+    dates:"Reisdata",from:"VERTREK",to:"TERUGKEER",nights:"nachten",orNights:"Of hoeveel nachten als data onbekend?",
+    noDate:"Kies eerst data om het overzicht te zien",
+    howGet:"Hoe kom je er",multiStep:"Meerdere etappes mogelijk — bijv. 🚗 + ⛴️ Veerboot",
+    travelers:"Reizigers",budget:"Budget *",globalBudget:"💵 Totaalbudget opgeven",globalBudgetPH:"Bijv. €3000 voor 2 personen, 7 nachten…",
+    style:"Reijsstijl (meerdere keuzes)",heberge:"Verblijf *",localT:"Lokaal vervoer",
+    wishes:"Jouw wensen & behoeften",musts:"Hoogtepunten / Dromen",mustsPH:"Calanques, strand Palombaggia…",
+    avoid:"Te vermijden",avoidPH:"Niet te toeristisch…",special:"Speciale behoeften",specialPH:"Vegetarisch, allergie…",
+    notes:"Overige informatie",notesPH:"Duikliefhebber, fijnproever…",
+    btn:"Maak mijn vakantieplan met Sofia →",btnFile:"📎 Analyseer mijn notities en maak mijn plan →",
+    hint:"Bestemming, Budget en Verblijf zijn verplicht",hintFile:"Sofia analyseert jouw document voor een volledig plan",
+    other:"✏️ Andere",stayHome:"🏠 Ik slaap thuis",
+    addCat:"Toevoegen aan",myStuff:"🧳 Mijn persoonlijke spullen",myStuffPH:"Kussens, kazen, koffie, messen…",
+    note:"Notitie toevoegen",noteClose:"Sluiten",
+    chat:"Chat met Sofia",chatSub:"Vraag een wijziging → plan bijgewerkt",chatPH:"Vraag Sofia om een wijziging…",
+    months:["Januari","Februari","Maart","April","Mei","Juni","Juli","Augustus","September","Oktober","November","December"],
+    days:["Ma","Di","Wo","Do","Vr","Za","Zo"],
+    loading:"Sofia bereidt jouw avontuur voor…",loadingFile:"Sofia leest jouw notities en bereidt jouw avontuur voor…",
+    chatSug:["Dag toevoegen","Dag 2 wijzigen","Meer wandelingen","Goedkoper verblijf","Vegetarische versie","Budget optimaliseren"],
+    new:"← Nieuw",overTitle:"Generatie mislukt",overSub:"Servers zijn overbelast. Wacht 1-2 minuten en probeer opnieuw.",
+    uploadTitle:"Deel jouw notities of ideeën met Sofia",uploadSub:"Foto van een notitieboek, artikel, lijst… Sofia leest alles en maakt jouw reis.",
+    uploadCTA:"Sleep of klik om te importeren",uploadFmt:"JPG, PNG, PDF, TXT — max 15 MB",
+    uploadLoaded:"BESTAND GELADEN",uploadHint:"Vul het formulier in om te verfijnen, of laat Sofia alles afleiden.",
+    langPick:"Taal",
+  },
+  DE:{
+    title:"Plane deinen perfekten Urlaub",sub:"Sofia erstellt deinen kompletten Plan mit Reiseroute, Sehenswürdigkeiten, Unterkünften, Restaurants, Ausflügen und Packliste",
+    dest:"Reiseziel *",destPH:"Korsika, Brüssel, Kyoto…",dep:"Abfahrtsstadt",depPH:"Luxemburg, Paris, Brüssel…",
+    dates:"Reisedaten",from:"ABREISE",to:"RÜCKKEHR",nights:"Nächte",orNights:"Oder wie viele Nächte wenn Daten unbekannt?",
+    noDate:"Wähle zuerst Daten aus",
+    howGet:"Wie komme ich hin",multiStep:"Mehrere Etappen möglich — z.B. 🚗 + ⛴️ Fähre",
+    travelers:"Reisende",budget:"Budget *",globalBudget:"💵 Gesamtbudget angeben",globalBudgetPH:"Z.B. 3000€ für 2 Personen, 7 Nächte…",
+    style:"Reisestil (mehrere Auswahl)",heberge:"Unterkunft *",localT:"Lokaler Transport",
+    wishes:"Deine Wünsche & Bedürfnisse",musts:"Must-Sees / Träume",mustsPH:"Calanques, Strand Palombaggia…",
+    avoid:"Zu vermeiden",avoidPH:"Nicht zu touristisch…",special:"Besondere Bedürfnisse",specialPH:"Vegetarisch, Allergie…",
+    notes:"Weitere Informationen",notesPH:"Tauchenthusiast, Feinschmecker…",
+    btn:"Meinen Urlaubsplan mit Sofia erstellen →",btnFile:"📎 Meine Notizen analysieren und Plan erstellen →",
+    hint:"Reiseziel, Budget und Unterkunft sind erforderlich",hintFile:"Sofia analysiert dein Dokument für einen vollständigen Plan",
+    other:"✏️ Andere",stayHome:"🏠 Ich schlafe zuhause",
+    addCat:"Hinzufügen zu",myStuff:"🧳 Meine persönlichen Sachen",myStuffPH:"Kissen, Käse, Kaffee, Messer…",
+    note:"Notiz hinzufügen",noteClose:"Schließen",
+    chat:"Chat mit Sofia",chatSub:"Änderung anfragen → Plan aktualisiert",chatPH:"Bitte Sofia um eine Änderung…",
+    months:["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"],
+    days:["Mo","Di","Mi","Do","Fr","Sa","So"],
+    loading:"Sofia bereitet dein Abenteuer vor…",loadingFile:"Sofia liest deine Notizen und bereitet dein Abenteuer vor…",
+    chatSug:["Tag hinzufügen","Tag 2 ändern","Mehr Wanderungen","Günstigere Unterkunft","Vegetarische Version","Budget optimieren"],
+    new:"← Neu",overTitle:"Generierung fehlgeschlagen",overSub:"Server überlastet. Warte 1-2 Minuten und versuche es erneut.",
+    uploadTitle:"Teile deine Notizen mit Sofia",uploadSub:"Foto eines Notizbuchs, Artikels, Liste… Sofia liest alles und erstellt deine Reise.",
+    uploadCTA:"Ziehen oder klicken",uploadFmt:"JPG, PNG, PDF, TXT — max 15 MB",
+    uploadLoaded:"DATEI GELADEN",uploadHint:"Fülle das Formular aus oder lass Sofia alles ableiten.",
+    langPick:"Sprache",
+  },
+  IT:{
+    title:"Pianifica le tue vacanze perfette",sub:"Sofia crea il tuo piano completo con itinerario, imperdibili, alloggi, ristoranti, escursioni e lista bagagli",
+    dest:"Destinazione *",destPH:"Corsica, Bruxelles, Kyoto…",dep:"Città di partenza",depPH:"Lussemburgo, Parigi, Bruxelles…",
+    dates:"Date del viaggio",from:"PARTENZA",to:"RITORNO",nights:"notti",orNights:"O quante notti se le date sono sconosciute?",
+    noDate:"Scegli prima le date",
+    howGet:"Come arrivare",multiStep:"Più tappe possibili — es. 🚗 + ⛴️ Traghetto",
+    travelers:"Viaggiatori",budget:"Budget *",globalBudget:"💵 Budget totale da specificare",globalBudgetPH:"Es. 3000€ per 2 persone, 7 notti…",
+    style:"Stile di viaggio (più scelte)",heberge:"Alloggio *",localT:"Trasporto locale",
+    wishes:"I tuoi desideri & bisogni",musts:"Imperdibili / Sogni",mustsPH:"Calanques, spiaggia Palombaggia…",
+    avoid:"Da evitare",avoidPH:"Non troppo turistico…",special:"Esigenze speciali",specialPH:"Vegetariano, allergia…",
+    notes:"Altre informazioni",notesPH:"Appassionato di immersioni, buongustaio…",
+    btn:"Crea il mio piano vacanze con Sofia →",btnFile:"📎 Analizza i miei appunti e crea il mio piano →",
+    hint:"Destinazione, Budget e Alloggio sono obbligatori",hintFile:"Sofia analizzerà il tuo documento per creare un piano completo",
+    other:"✏️ Altro",stayHome:"🏠 Dormo a casa mia",
+    addCat:"Aggiungi a",myStuff:"🧳 I miei oggetti personali",myStuffPH:"Cuscini, formaggi, caffè, coltelli…",
+    note:"Aggiungi una nota",noteClose:"Chiudi",
+    chat:"Chat con Sofia",chatSub:"Richiedi una modifica → piano aggiornato",chatPH:"Chiedi una modifica a Sofia…",
+    months:["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"],
+    days:["Lu","Ma","Me","Gi","Ve","Sa","Do"],
+    loading:"Sofia sta preparando la tua avventura…",loadingFile:"Sofia legge i tuoi appunti e prepara la tua avventura…",
+    chatSug:["Aggiungi un giorno","Cambia giorno 2","Più escursioni","Alloggio meno caro","Versione vegetariana","Ottimizza budget"],
+    new:"← Nuovo",overTitle:"Generazione fallita",overSub:"Server sovraccarichi. Aspetta 1-2 minuti e riprova.",
+    uploadTitle:"Condividi i tuoi appunti con Sofia",uploadSub:"Foto di un taccuino, articolo, lista… Sofia legge tutto e crea il tuo viaggio.",
+    uploadCTA:"Trascina o clicca per importare",uploadFmt:"JPG, PNG, PDF, TXT — max 15 MB",
+    uploadLoaded:"FILE CARICATO",uploadHint:"Compila il modulo per affinare, o lascia che Sofia deduca tutto.",
+    langPick:"Lingua",
+  },
+  ES:{
+    title:"Planifica tus vacaciones perfectas",sub:"Sofia crea tu plan completo con itinerario, imprescindibles, alojamientos, restaurantes, salidas y lista de equipaje",
+    dest:"Destino *",destPH:"Córcega, Bruselas, Kioto…",dep:"Ciudad de salida",depPH:"Luxemburgo, París, Bruselas…",
+    dates:"Fechas del viaje",from:"SALIDA",to:"REGRESO",nights:"noches",orNights:"¿O cuántas noches si las fechas son desconocidas?",
+    noDate:"Elige primero las fechas",
+    howGet:"Cómo llegar",multiStep:"Varias etapas posibles — ej. 🚗 + ⛴️ Ferry",
+    travelers:"Viajeros",budget:"Presupuesto *",globalBudget:"💵 Presupuesto total a especificar",globalBudgetPH:"Ej. 3000€ para 2 personas, 7 noches…",
+    style:"Estilo de viaje (varias opciones)",heberge:"Alojamiento *",localT:"Transporte local",
+    wishes:"Tus deseos & necesidades",musts:"Imprescindibles / Sueños",mustsPH:"Calanques, playa Palombaggia…",
+    avoid:"A evitar",avoidPH:"No demasiado turístico…",special:"Necesidades especiales",specialPH:"Vegetariano, alergia…",
+    notes:"Otra información",notesPH:"Aficionado al buceo, gastrónomo…",
+    btn:"Crear mi plan de vacaciones con Sofia →",btnFile:"📎 Analizar mis notas y crear mi plan →",
+    hint:"Destino, Presupuesto y Alojamiento son obligatorios",hintFile:"Sofia analizará tu documento para crear un plan completo",
+    other:"✏️ Otro",stayHome:"🏠 Duermo en casa",
+    addCat:"Añadir a",myStuff:"🧳 Mis objetos personales",myStuffPH:"Almohadas, quesos, café, cuchillos…",
+    note:"Añadir una nota",noteClose:"Cerrar",
+    chat:"Chat con Sofia",chatSub:"Solicita un cambio → plan actualizado",chatPH:"Pide un cambio a Sofia…",
+    months:["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"],
+    days:["Lu","Ma","Mi","Ju","Vi","Sá","Do"],
+    loading:"Sofia está preparando tu aventura…",loadingFile:"Sofia lee tus notas y prepara tu aventura…",
+    chatSug:["Añade un día","Cambia el día 2","Más senderismo","Alojamiento más barato","Versión vegetariana","Optimiza presupuesto"],
+    new:"← Nuevo",overTitle:"Generación fallida",overSub:"Servidores sobrecargados. Espera 1-2 minutos e inténtalo de nuevo.",
+    uploadTitle:"Comparte tus notas con Sofia",uploadSub:"Foto de un cuaderno, artículo, lista… Sofia lo lee todo y crea tu viaje.",
+    uploadCTA:"Arrastra o haz clic para importar",uploadFmt:"JPG, PNG, PDF, TXT — máx. 15 MB",
+    uploadLoaded:"ARCHIVO CARGADO",uploadHint:"Rellena el formulario para afinar, o deja que Sofia lo deduzca todo.",
+    langPick:"Idioma",
+  },
+  PT:{
+    title:"Planeia as tuas férias perfeitas",sub:"Sofia cria o teu plano completo com itinerário, imperdíveis, alojamentos, restaurantes, saídas e lista de bagagem",
+    dest:"Destino *",destPH:"Córsega, Bruxelas, Quioto…",dep:"Cidade de partida",depPH:"Luxemburgo, Paris, Bruxelas…",
+    dates:"Datas da viagem",from:"PARTIDA",to:"REGRESSO",nights:"noites",orNights:"Ou quantas noites se as datas forem desconhecidas?",
+    noDate:"Escolhe primeiro as datas",
+    howGet:"Como chegar",multiStep:"Várias etapas possíveis — ex. 🚗 + ⛴️ Ferry",
+    travelers:"Viajantes",budget:"Orçamento *",globalBudget:"💵 Orçamento total a especificar",globalBudgetPH:"Ex. 3000€ para 2 pessoas, 7 noites…",
+    style:"Estilo de viagem (várias escolhas)",heberge:"Alojamento *",localT:"Transporte local",
+    wishes:"Os teus desejos & necessidades",musts:"Imperdíveis / Sonhos",mustsPH:"Calanques, praia Palombaggia…",
+    avoid:"A evitar",avoidPH:"Não muito turístico…",special:"Necessidades especiais",specialPH:"Vegetariano, alergia…",
+    notes:"Outras informações",notesPH:"Apaixonado por mergulho, gastrónomo…",
+    btn:"Criar o meu plano de férias com Sofia →",btnFile:"📎 Analisar as minhas notas e criar o meu plano →",
+    hint:"Destino, Orçamento e Alojamento são obrigatórios",hintFile:"Sofia analisará o teu documento para criar um plano completo",
+    other:"✏️ Outro",stayHome:"🏠 Durmo em casa",
+    addCat:"Adicionar a",myStuff:"🧳 Os meus objetos pessoais",myStuffPH:"Almofadas, queijos, café, facas…",
+    note:"Adicionar uma nota",noteClose:"Fechar",
+    chat:"Chat com Sofia",chatSub:"Pede uma alteração → plano atualizado",chatPH:"Pede uma alteração a Sofia…",
+    months:["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"],
+    days:["Se","Te","Qu","Qu","Se","Sá","Do"],
+    loading:"Sofia está a preparar a tua aventura…",loadingFile:"Sofia lê as tuas notas e prepara a tua aventura…",
+    chatSug:["Adiciona um dia","Muda o dia 2","Mais caminhadas","Alojamento mais barato","Versão vegetariana","Otimiza orçamento"],
+    new:"← Novo",overTitle:"Geração falhada",overSub:"Servidores sobrecarregados. Aguarda 1-2 minutos e tenta novamente.",
+    uploadTitle:"Partilha as tuas notas com Sofia",uploadSub:"Foto de um caderno, artigo, lista… Sofia lê tudo e cria a tua viagem.",
+    uploadCTA:"Arrasta ou clica para importar",uploadFmt:"JPG, PNG, PDF, TXT — máx. 15 MB",
+    uploadLoaded:"FICHEIRO CARREGADO",uploadHint:"Preenche o formulário para afinar, ou deixa Sofia deduzir tudo.",
+    langPick:"Língua",
+  },
+  LU:{
+    title:"Planéier déng perfekt Vakanz",sub:"Sofia erstellt däin komplette Plan mat Reesroute, Musseen, Ënnerkonft, Restauranten, Ausflüg a Packlëscht",
+    dest:"Destinatioun *",destPH:"Korsika, Bréissel, Kyoto…",dep:"Offahrtsstad",depPH:"Lëtzebuerg, Paräis, Bréissel…",
+    dates:"Reesdaten",from:"OFFAHRT",to:"RÉCKKÉIER",nights:"Nuechten",orNights:"Oder wéivill Nuechten wann Datumer onbekannt?",
+    noDate:"Wiel éischt d'Datumer",
+    howGet:"Wéi kënns du dohinner",multiStep:"Méi Etappen méiglech — z.B. 🚗 + ⛴️ Fähr",
+    travelers:"Reesend",budget:"Budget *",globalBudget:"💵 Gesamtbudget uginn",globalBudgetPH:"Z.B. 3000€ fir 2 Persounen, 7 Nuechten…",
+    style:"Reestil (méi Auswiel)",heberge:"Ënnerkonft *",localT:"Lokalen Transport",
+    wishes:"Deng Wënsch & Besoinen",musts:"Muss-Gesinn / Dréim",mustsPH:"Calanques, Strand Palombaggia…",
+    avoid:"Ze vermeiden",avoidPH:"Net ze touristesch…",special:"Speziell Besoinen",specialPH:"Vegetaresch, Allergie…",
+    notes:"Aner Informatiounen",notesPH:"Tauchen, Gastronomie…",
+    btn:"Mäi Vakanzplan mat Sofia erstellen →",btnFile:"📎 Meng Notizen analyséieren a mäi Plan erstellen →",
+    hint:"Destinatioun, Budget an Ënnerkonft si néideg",hintFile:"Sofia analyséiert däin Dokument fir e komplette Plan",
+    other:"✏️ Aner",stayHome:"🏠 Ech schlof doheem",
+    addCat:"Dobäisetzen zu",myStuff:"🧳 Meng perséinlech Saachen",myStuffPH:"Kessen, Käse, Kaffi, Messer…",
+    note:"Notiz derbäisetzen",noteClose:"Zoumaachen",
+    chat:"Chat mat Sofia",chatSub:"Ännerung froen → Plan aktualiséiert",chatPH:"Freet Sofia eng Ännerung…",
+    months:["Januar","Februar","Mäerz","Abrëll","Mee","Juni","Juli","August","September","Oktober","November","Dezember"],
+    days:["Mo","Di","Mi","Do","Fr","Sa","So"],
+    loading:"Sofia preparéiert däin Abenteuer…",loadingFile:"Sofia liest deng Notizen a preparéiert däin Abenteuer…",
+    chatSug:["Dag derbäisetzen","Dag 2 änneren","Méi Wanderungen","Méi bëllege Logement","Vegetaresch Versioun","Budget optimiséieren"],
+    new:"← Nei",overTitle:"Generéierung fehlgeschloen",overSub:"Server iwwerlaascht. Waart 1-2 Minutten a probéier nach eng Kéier.",
+    uploadTitle:"Deel deng Notizen mat Sofia",uploadSub:"Foto vun engem Notizbuch, Artikel, Lëscht… Sofia liest alles a erstellt deng Rees.",
+    uploadCTA:"Schleefen oder klicken",uploadFmt:"JPG, PNG, PDF, TXT — max 15 MB",
+    uploadLoaded:"FICHIER GELUEDEN",uploadHint:"Fëll de Formulaire aus fir ze verfeineren, oder looss Sofia alles ofleeden.",
+    langPick:"Sprooch",
+  },
+  PL:{
+    title:"Zaplanuj idealne wakacje",sub:"Sofia tworzy kompletny plan z trasą, atrakcjami, noclegami, restauracjami, wycieczkami i listą pakowania",
+    dest:"Cel podróży *",destPH:"Korsyka, Bruksela, Kioto…",dep:"Miasto wyjazdu",depPH:"Luksemburg, Paryż, Bruksela…",
+    dates:"Daty podróży",from:"WYJAZD",to:"POWRÓT",nights:"nocy",orNights:"Lub ile nocy, jeśli daty są nieznane?",
+    noDate:"Najpierw wybierz daty",
+    howGet:"Jak tam dotrzeć",multiStep:"Możliwe kilka etapów — np. 🚗 + ⛴️ Prom",
+    travelers:"Podróżnicy",budget:"Budżet *",globalBudget:"💵 Łączny budżet do podania",globalBudgetPH:"Np. 3000€ dla 2 osób, 7 nocy…",
+    style:"Styl podróży (wiele wyborów)",heberge:"Zakwaterowanie *",localT:"Transport lokalny",
+    wishes:"Twoje życzenia i potrzeby",musts:"Must-see / Marzenia",mustsPH:"Kalanki, plaża Palombaggia…",
+    avoid:"Do uniknięcia",avoidPH:"Nie za bardzo turystycznie…",special:"Specjalne potrzeby",specialPH:"Wegetarianin, alergia…",
+    notes:"Inne informacje",notesPH:"Pasjonat nurkowania, smakosz…",
+    btn:"Utwórz mój plan wakacyjny z Sofią →",btnFile:"📎 Analizuj moje notatki i utwórz plan →",
+    hint:"Cel, Budżet i Zakwaterowanie są wymagane",hintFile:"Sofia przeanalizuje Twój dokument i stworzy kompletny plan",
+    other:"✏️ Inne",stayHome:"🏠 Śpię w domu",
+    addCat:"Dodaj do",myStuff:"🧳 Moje osobiste rzeczy",myStuffPH:"Poduszki, sery, kawa, noże…",
+    note:"Dodaj notatkę",noteClose:"Zamknij",
+    chat:"Czat z Sofią",chatSub:"Poproś o zmianę → plan zaktualizowany",chatPH:"Poproś Sofię o zmianę…",
+    months:["Styczeń","Luty","Marzec","Kwiecień","Maj","Czerwiec","Lipiec","Sierpień","Wrzesień","Październik","Listopad","Grudzień"],
+    days:["Pn","Wt","Śr","Cz","Pt","So","Nd"],
+    loading:"Sofia przygotowuje Twoją przygodę…",loadingFile:"Sofia czyta Twoje notatki i przygotowuje przygodę…",
+    chatSug:["Dodaj dzień","Zmień dzień 2","Więcej wędrówek","Tańsze zakwaterowanie","Wersja wegetariańska","Optymalizuj budżet"],
+    new:"← Nowy",overTitle:"Generowanie nie powiodło się",overSub:"Serwery są przeciążone. Poczekaj 1-2 minuty i spróbuj ponownie.",
+    uploadTitle:"Podziel się notatkami z Sofią",uploadSub:"Zdjęcie notesu, artykułu, listy… Sofia czyta wszystko i tworzy podróż.",
+    uploadCTA:"Przeciągnij lub kliknij, aby zaimportować",uploadFmt:"JPG, PNG, PDF, TXT — maks. 15 MB",
+    uploadLoaded:"PLIK ZAŁADOWANY",uploadHint:"Wypełnij formularz, aby doprecyzować, lub pozwól Sofii wywnioskować wszystko.",
+    langPick:"Język",
+  },
+  RO:{
+    title:"Planifică-ți vacanța perfectă",sub:"Sofia creează planul tău complet cu itinerar, obiective, cazări, restaurante, excursii și lista de bagaje",
+    dest:"Destinație *",destPH:"Corsica, Bruxelles, Kyoto…",dep:"Orașul de plecare",depPH:"Luxemburg, Paris, Bruxelles…",
+    dates:"Datele călătoriei",from:"PLECARE",to:"ÎNTOARCERE",nights:"nopți",orNights:"Sau câte nopți dacă datele sunt necunoscute?",
+    noDate:"Alege mai întâi datele",
+    howGet:"Cum să ajungi acolo",multiStep:"Mai multe etape posibile — ex. 🚗 + ⛴️ Feribot",
+    travelers:"Călători",budget:"Buget *",globalBudget:"💵 Buget total de specificat",globalBudgetPH:"Ex. 3000€ pentru 2 persoane, 7 nopți…",
+    style:"Stil de călătorie (mai multe alegeri)",heberge:"Cazare *",localT:"Transport local",
+    wishes:"Dorințele și nevoile tale",musts:"Must-see / Vise",mustsPH:"Calanques, plaja Palombaggia…",
+    avoid:"De evitat",avoidPH:"Nu prea turistic…",special:"Nevoi speciale",specialPH:"Vegetarian, alergie…",
+    notes:"Alte informații",notesPH:"Pasionat de scufundări, gurmand…",
+    btn:"Creează planul meu de vacanță cu Sofia →",btnFile:"📎 Analizează notele mele și creează planul →",
+    hint:"Destinația, Bugetul și Cazarea sunt obligatorii",hintFile:"Sofia va analiza documentul tău pentru a crea un plan complet",
+    other:"✏️ Altele",stayHome:"🏠 Dorm acasă",
+    addCat:"Adaugă în",myStuff:"🧳 Obiectele mele personale",myStuffPH:"Perne, brânzeturi, cafea, cuțite…",
+    note:"Adaugă o notă",noteClose:"Închide",
+    chat:"Chat cu Sofia",chatSub:"Solicită o modificare → plan actualizat",chatPH:"Cere o modificare Sofiei…",
+    months:["Ianuarie","Februarie","Martie","Aprilie","Mai","Iunie","Iulie","August","Septembrie","Octombrie","Noiembrie","Decembrie"],
+    days:["Lu","Ma","Mi","Jo","Vi","Sâ","Du"],
+    loading:"Sofia îți pregătește aventura…",loadingFile:"Sofia citește notele tale și pregătește aventura…",
+    chatSug:["Adaugă o zi","Schimbă ziua 2","Mai multe drumeții","Cazare mai ieftină","Versiune vegetariană","Optimizează bugetul"],
+    new:"← Nou",overTitle:"Generare eșuată",overSub:"Serverele sunt suprasolicitate. Așteaptă 1-2 minute și încearcă din nou.",
+    uploadTitle:"Împărtășește notele cu Sofia",uploadSub:"Fotografie a unui caiet, articol, listă… Sofia citește totul și creează călătoria ta.",
+    uploadCTA:"Trage sau fă clic pentru a importa",uploadFmt:"JPG, PNG, PDF, TXT — max. 15 MB",
+    uploadLoaded:"FIȘIER ÎNCĂRCAT",uploadHint:"Completează formularul pentru a rafina, sau lasă Sofia să deducă totul.",
+    langPick:"Limbă",
+  },
+  SV:{
+    title:"Planera din perfekta semester",sub:"Sofia skapar din kompletta plan med resväg, sevärdheter, boenden, restauranger, utflykter och packlista",
+    dest:"Destination *",destPH:"Korsika, Bryssel, Kyoto…",dep:"Avresestad",depPH:"Luxemburg, Paris, Bryssel…",
+    dates:"Resdatum",from:"AVRESA",to:"ÅTERKOMST",nights:"nätter",orNights:"Eller hur många nätter om datumen är okända?",
+    noDate:"Välj datum först",
+    howGet:"Hur tar man sig dit",multiStep:"Flera etapper möjliga — t.ex. 🚗 + ⛴️ Färja",
+    travelers:"Resenärer",budget:"Budget *",globalBudget:"💵 Totalbudget att ange",globalBudgetPH:"T.ex. 3000€ för 2 personer, 7 nätter…",
+    style:"Resestil (flera val)",heberge:"Boende *",localT:"Lokaltransport",
+    wishes:"Dina önskemål och behov",musts:"Måsten / Drömmar",mustsPH:"Calanques, stranden Palombaggia…",
+    avoid:"Att undvika",avoidPH:"Inte för turistigt…",special:"Särskilda behov",specialPH:"Vegetarisk, allergi…",
+    notes:"Annan information",notesPH:"Dykarentusiast, matälskare…",
+    btn:"Skapa min semesterplan med Sofia →",btnFile:"📎 Analysera mina anteckningar och skapa plan →",
+    hint:"Destination, Budget och Boende krävs",hintFile:"Sofia analyserar ditt dokument och skapar en komplett plan",
+    other:"✏️ Annat",stayHome:"🏠 Jag sover hemma",
+    addCat:"Lägg till i",myStuff:"🧳 Mina personliga saker",myStuffPH:"Kuddar, ostar, kaffe, knivar…",
+    note:"Lägg till en anteckning",noteClose:"Stäng",
+    chat:"Chatta med Sofia",chatSub:"Begär en ändring → plan uppdaterad",chatPH:"Be Sofia om en ändring…",
+    months:["Januari","Februari","Mars","April","Maj","Juni","Juli","Augusti","September","Oktober","November","December"],
+    days:["Mån","Tis","Ons","Tor","Fre","Lör","Sön"],
+    loading:"Sofia förbereder ditt äventyr…",loadingFile:"Sofia läser dina anteckningar och förbereder äventyret…",
+    chatSug:["Lägg till en dag","Ändra dag 2","Fler vandringar","Billigare boende","Vegetarisk version","Optimera budget"],
+    new:"← Ny",overTitle:"Generering misslyckades",overSub:"Servrarna är överbelastade. Vänta 1-2 minuter och försök igen.",
+    uploadTitle:"Dela dina anteckningar med Sofia",uploadSub:"Foto av anteckningsbok, artikel, lista… Sofia läser allt och skapar din resa.",
+    uploadCTA:"Dra eller klicka för att importera",uploadFmt:"JPG, PNG, PDF, TXT — max 15 MB",
+    uploadLoaded:"FIL LADDAD",uploadHint:"Fyll i formuläret för att förfina, eller låt Sofia dra slutsatser från ditt dokument.",
+    langPick:"Språk",
+  },
+  DA:{
+    title:"Planlæg din perfekte ferie",sub:"Sofia opretter din komplette plan med rejserute, seværdigheder, overnatninger, restauranter, udflugter og pakkeliste",
+    dest:"Destination *",destPH:"Korsika, Bruxelles, Kyoto…",dep:"Afgangsby",depPH:"Luxembourg, Paris, Bruxelles…",
+    dates:"Rejsedatoer",from:"AFREJSE",to:"HJEMKOMST",nights:"nætter",orNights:"Eller hvor mange nætter hvis datoerne er ukendte?",
+    noDate:"Vælg datoer først",
+    howGet:"Hvordan kommer man derhen",multiStep:"Flere etaper mulige — f.eks. 🚗 + ⛴️ Færge",
+    travelers:"Rejsende",budget:"Budget *",globalBudget:"💵 Samlet budget at angive",globalBudgetPH:"F.eks. 3000€ for 2 personer, 7 nætter…",
+    style:"Rejsestil (flere valg)",heberge:"Overnatning *",localT:"Lokal transport",
+    wishes:"Dine ønsker og behov",musts:"Must-sees / Drømme",mustsPH:"Calanques, stranden Palombaggia…",
+    avoid:"At undgå",avoidPH:"Ikke for turistet…",special:"Særlige behov",specialPH:"Vegetar, allergi…",
+    notes:"Andre oplysninger",notesPH:"Dykkerentusiast, madelsker…",
+    btn:"Opret min ferieplan med Sofia →",btnFile:"📎 Analysér mine noter og opret plan →",
+    hint:"Destination, Budget og Overnatning er påkrævet",hintFile:"Sofia analyserer dit dokument og opretter en komplet plan",
+    other:"✏️ Andet",stayHome:"🏠 Jeg sover hjemme",
+    addCat:"Tilføj til",myStuff:"🧳 Mine personlige ting",myStuffPH:"Puder, oste, kaffe, knive…",
+    note:"Tilføj en note",noteClose:"Luk",
+    chat:"Chat med Sofia",chatSub:"Anmod om en ændring → plan opdateret",chatPH:"Bed Sofia om en ændring…",
+    months:["Januar","Februar","Marts","April","Maj","Juni","Juli","August","September","Oktober","November","December"],
+    days:["Man","Tir","Ons","Tor","Fre","Lør","Søn"],
+    loading:"Sofia forbereder dit eventyr…",loadingFile:"Sofia læser dine noter og forbereder eventyret…",
+    chatSug:["Tilføj en dag","Skift dag 2","Flere vandreture","Billigere overnatning","Vegetarisk version","Optimer budget"],
+    new:"← Ny",overTitle:"Generering mislykkedes",overSub:"Serverne er overbelastede. Vent 1-2 minutter og prøv igen.",
+    uploadTitle:"Del dine noter med Sofia",uploadSub:"Foto af notesbog, artikel, liste… Sofia læser det hele og opretter din rejse.",
+    uploadCTA:"Træk eller klik for at importere",uploadFmt:"JPG, PNG, PDF, TXT — maks. 15 MB",
+    uploadLoaded:"FIL INDLÆST",uploadHint:"Udfyld formularen for at præcisere, eller lad Sofia udlede alt fra dit dokument.",
+    langPick:"Sprog",
+  },
+};
+
+// ─── Date Range Picker ─────────────────────────────────────
+function DateRangePicker({dateStart,dateEnd,nuits,onDateStart,onDateEnd,onNuits,lang}){
+  const tr=T[lang]||T.FR;
+  const [curMonth,setCurMonth]=useState(()=>{
+    const d=dateStart?new Date(dateStart):new Date();
+    return new Date(d.getFullYear(),d.getMonth(),1);
+  });
+  const [hovered,setHovered]=useState(null);
+  const today=new Date();today.setHours(0,0,0,0);
+  const start=dateStart?new Date(dateStart):null;
+  const end=dateEnd?new Date(dateEnd):null;
+  if(start) start.setHours(0,0,0,0);
+  if(end) end.setHours(0,0,0,0);
+  const daysInMonth=new Date(curMonth.getFullYear(),curMonth.getMonth()+1,0).getDate();
+  const firstDay=curMonth.getDay();
+  const startOffset=(firstDay+6)%7; // Mon=0
+  const handleDay=(day)=>{
+    const clicked=new Date(curMonth.getFullYear(),curMonth.getMonth(),day);
+    clicked.setHours(0,0,0,0);
+    if(clicked<today) return;
+    if(!start||(start&&end)){
+      onDateStart(clicked.toISOString().split("T")[0]);
+      onDateEnd("");
+    } else {
+      if(clicked<=start){
+        onDateStart(clicked.toISOString().split("T")[0]);
+        onDateEnd("");
+      } else {
+        const endStr=clicked.toISOString().split("T")[0];
+        onDateEnd(endStr);
+        const nights=Math.round((clicked-start)/(1000*60*60*24));
+        onNuits(nights);
+        setHovered(null);
+      }
+    }
+  };
+  const isStart=d=>start&&d.getTime()===start.getTime();
+  const isEnd=d=>end&&d.getTime()===end.getTime();
+  const inRange=d=>{
+    const effEnd=end||(hovered?new Date(hovered):null);
+    if(effEnd) effEnd.setHours?effEnd.setHours(0,0,0,0):null;
+    return start&&effEnd&&d>start&&d<effEnd;
+  };
+  const cells=[];
+  for(let i=0;i<startOffset;i++) cells.push(null);
+  for(let d=1;d<=daysInMonth;d++) cells.push(d);
+  const navBtn=(dir)=>{
+    setCurMonth(m=>new Date(m.getFullYear(),m.getMonth()+dir,1));
+  };
+  const fmt=d=>d?d.toLocaleDateString(lang==="EN"?"en-GB":lang==="NL"?"nl-NL":lang==="DE"?"de-DE":lang==="IT"?"it-IT":lang==="ES"?"es-ES":lang==="PT"?"pt-PT":lang==="LU"?"de-LU":"fr-FR",{day:"numeric",month:"long"}):"?";
+  return(
+    <div style={{background:"#fff",border:"1.5px solid "+C.parch,borderRadius:8,padding:"16px",userSelect:"none"}}>
+      {/* Month nav */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+        <button onClick={()=>navBtn(-1)} style={{background:"none",border:"1px solid "+C.parch,borderRadius:4,cursor:"pointer",padding:"4px 10px",fontSize:16,color:C.gold,lineHeight:1}}>‹</button>
+        <div style={{fontFamily:"'Playfair Display',serif",fontSize:15,fontWeight:700}}>
+          {tr.months[curMonth.getMonth()]} {curMonth.getFullYear()}
+        </div>
+        <button onClick={()=>navBtn(1)} style={{background:"none",border:"1px solid "+C.parch,borderRadius:4,cursor:"pointer",padding:"4px 10px",fontSize:16,color:C.gold,lineHeight:1}}>›</button>
+      </div>
+      {/* Day headers */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginBottom:4}}>
+        {tr.days.map(d=><div key={d} style={{textAlign:"center",fontFamily:"'DM Mono',monospace",fontSize:9,color:C.mist,padding:"4px 0"}}>{d}</div>)}
+      </div>
+      {/* Grid */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2}}>
+        {cells.map((day,i)=>{
+          if(!day) return <div key={i}/>;
+          const d=new Date(curMonth.getFullYear(),curMonth.getMonth(),day);
+          d.setHours(0,0,0,0);
+          const iS=isStart(d);const iE=isEnd(d);const iR=inRange(d);
+          const isPast=d<today;
+          const isToday=d.getTime()===today.getTime();
+          return(
+            <button key={i}
+              onClick={()=>handleDay(day)}
+              onMouseEnter={()=>{if(start&&!end&&!isPast){const hd=new Date(curMonth.getFullYear(),curMonth.getMonth(),day);setHovered(hd.toISOString());}}}
+              onMouseLeave={()=>setHovered(null)}
+              style={{
+                padding:"7px 0",textAlign:"center",border:"none",
+                borderRadius:iS?"50% 0 0 50%":iE?"0 50% 50% 0":"4px",
+                background:iS||iE?C.rust:iR?"#fde8e4":"transparent",
+                color:iS||iE?"#fff":isPast?"#ccc":isToday?C.gold:C.ink,
+                fontFamily:"'DM Sans',sans-serif",fontSize:12,
+                cursor:isPast?"default":"pointer",
+                fontWeight:iS||iE?700:isToday?600:400,
+                outline:isToday&&!iS&&!iE?"2px solid "+C.gold:"none",
+                outlineOffset:"1px",
+              }}>
+              {day}
+            </button>
+          );
+        })}
+      </div>
+      {/* Summary */}
+      <div style={{marginTop:12,padding:"10px 14px",background:C.cream,borderRadius:6,fontSize:13}}>
+        {dateStart&&dateEnd?(
+          <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+            <span style={{color:C.mist,fontSize:11}}>📅</span>
+            <span style={{color:C.ink}}>{fmt(start)} → {fmt(end)}</span>
+            <span style={{marginLeft:"auto",fontFamily:"'Playfair Display',serif",fontWeight:700,color:C.gold,whiteSpace:"nowrap"}}>🌙 {nuits} {tr.nights}</span>
+          </div>
+        ):dateStart?(
+          <div style={{color:C.mist,fontSize:12}}>📅 {fmt(start)} → <em style={{color:C.gold}}>{lang==="EN"?"Click return date":"Cliquez la date de retour"}</em></div>
+        ):(
+          <div style={{color:C.mist,fontSize:12,fontStyle:"italic"}}>{lang==="EN"?"Click departure date to start":"Cliquez la date de départ pour commencer"}</div>
+        )}
+      </div>
+      {/* Manual nights fallback */}
+      {!dateStart&&(
+        <div style={{marginTop:10}}>
+          <div style={{fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:2,textTransform:"uppercase",color:C.mist,marginBottom:6}}>{tr.orNights}</div>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <button onClick={()=>onNuits(Math.max(1,nuits-1))} style={{width:34,height:34,border:"1.5px solid "+C.parch,borderRadius:4,background:"#fff",fontSize:18,cursor:"pointer"}}>−</button>
+            <span style={{fontFamily:"'Playfair Display',serif",fontSize:20,fontWeight:700,color:C.gold,minWidth:40,textAlign:"center"}}>{nuits}</span>
+            <button onClick={()=>onNuits(Math.min(90,nuits+1))} style={{width:34,height:34,border:"1.5px solid "+C.parch,borderRadius:4,background:"#fff",fontSize:18,cursor:"pointer"}}>+</button>
+            <span style={{fontSize:13,color:C.mist}}>{tr.nights}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function getAdults(v,a){const val=v==="Autre"?(a||""):(v||"");if(val==="Solo")return 1;if(val.includes("2 adultes")||val.includes("Couple"))return 2;if(val.includes("Groupe"))return 4;return 2;}
 
 // ─── Unsplash photo hook ────────────────────────────────────
@@ -60,6 +529,14 @@ function Photo({query,h=140}){
     <div style={{height:h,overflow:"hidden",background:C.parch,flexShrink:0}}>
       <img src={src} alt={query||""} style={{width:"100%",height:"100%",objectFit:"cover"}} loading="lazy"/>
     </div>
+  );
+}
+
+// HeroPhoto: separate component so usePhoto hook is called correctly (never conditionally)
+function HeroPhoto({query}){
+  const src=usePhoto(query);
+  return(
+    <img src={src} alt="" style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",objectFit:"cover",opacity:.55}} loading="lazy"/>
   );
 }
 
@@ -383,6 +860,8 @@ export default function SofiaPlanner(){
   const [showMap,setShowMap]=useState(false);
   const [overloaded,setOverloaded]=useState(false);
   const [uploadedFile,setUploadedFile]=useState(null);
+  const [lang,setLang]=useState("FR");
+  const tr=T[lang]||T.FR;
   const bottomRef=useRef(null);
   useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"});},[msgs]);
 
@@ -422,7 +901,7 @@ export default function SofiaPlanner(){
     if(!validate()) return;
     setPhase("loading");setOverloaded(false);
     try{
-      const body={formData:form.destination||form.budget?form:null};
+      const body={formData:form.destination||form.budget?form:null,lang};
       if(uploadedFile){body.fileData=uploadedFile.data;body.fileType=uploadedFile.type;}
       const res=await fetch("/api/plan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
       const data=await res.json();
@@ -441,7 +920,7 @@ export default function SofiaPlanner(){
     const newMsgs=[...msgs,userMsg];
     setMsgs(newMsgs);setChatIn("");setChatLoad(true);
     try{
-      const res=await fetch("/api/plan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages:newMsgs.map(m=>({role:m.role,content:m.content})),currentPlan:plan})});
+      const res=await fetch("/api/plan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages:newMsgs.map(m=>({role:m.role,content:m.content})),currentPlan:plan,lang})});
       const data=await res.json();
       if(data.type==="plan"&&data.data?.days){
         setPlan({...data.data,destination:plan?.destination||form.destination||"Voyage"});
@@ -565,6 +1044,16 @@ window.onload=function(){
           <div style={{fontFamily:"'Playfair Display',serif",fontSize:17,fontWeight:700,color:"#FAF6EE"}}>Sofia <em style={{color:C.gold}}>Planner</em></div>
           <div style={{fontFamily:"'DM Mono',monospace",fontSize:7,letterSpacing:2,color:"#555"}}>On The Road Again</div>
         </div>
+        {/* Language selector */}
+        <div style={{display:"flex",gap:4,flexWrap:"wrap",margin:"0 8px"}}>
+          {LANGS.map(l=>(
+            <button key={l.code} onClick={()=>setLang(l.code)}
+              title={l.name}
+              style={{padding:"3px 6px",border:"1.5px solid",borderRadius:4,background:lang===l.code?C.gold:"transparent",borderColor:lang===l.code?C.gold:"#333",color:"#fff",fontSize:13,cursor:"pointer",lineHeight:1}}>
+              {l.flag}
+            </button>
+          ))}
+        </div>
         {phase==="result"&&(
           <div style={{display:"flex",gap:6,flexShrink:0}}>
             <button onClick={openPDF} style={{padding:"8px 12px",background:C.gold,color:"#fff",border:"none",borderRadius:4,fontFamily:"'DM Mono',monospace",fontSize:8,letterSpacing:1,textTransform:"uppercase",cursor:"pointer"}}>📄 PDF</button>
@@ -605,37 +1094,17 @@ window.onload=function(){
                 </div>
                 <div><span style={lbl}>Ville de départ</span><div style={inpBox}><input style={inp} value={form.depart} onChange={e=>setF("depart",e.target.value)} placeholder="Luxembourg, Paris, Bruxelles…"/></div></div>
               </div>
-              {/* Unified date range picker */}
+              {/* Date Range Picker */}
               <div>
-                <span style={lbl}>📅 Dates du séjour</span>
-                <div className="date-box" style={{borderColor:errors.dateEnd?"#C1440E":C.parch}}>
-                  <div style={{display:"flex",flexDirection:"column",flex:1}}>
-                    <span style={{fontFamily:"'DM Mono',monospace",fontSize:8,letterSpacing:2,color:C.mist,padding:"8px 14px 0"}}>DÉPART</span>
-                    <input type="date" value={form.dateStart} onChange={e=>handleDate("dateStart",e.target.value)}/>
-                  </div>
-                  <div className="date-sep"/>
-                  <div style={{display:"flex",flexDirection:"column",flex:1}}>
-                    <span style={{fontFamily:"'DM Mono',monospace",fontSize:8,letterSpacing:2,color:C.mist,padding:"8px 14px 0"}}>RETOUR</span>
-                    <input type="date" value={form.dateEnd} onChange={e=>handleDate("dateEnd",e.target.value)} min={form.dateStart||undefined}/>
-                  </div>
-                </div>
+                <span style={lbl}>📅 {tr.dates}</span>
+                <DateRangePicker
+                  dateStart={form.dateStart} dateEnd={form.dateEnd} nuits={form.nuits}
+                  onDateStart={v=>handleDate("dateStart",v)}
+                  onDateEnd={v=>handleDate("dateEnd",v)}
+                  onNuits={v=>setF("nuits",v)}
+                  lang={lang}
+                />
                 {errors.dateEnd&&<div style={{fontSize:11,color:C.rust,marginTop:4}}>⚠️ {errors.dateEnd}</div>}
-                {form.dateStart&&form.dateEnd&&!errors.dateEnd&&(
-                  <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:"#fff",border:"1.5px solid "+C.gold,borderRadius:4,marginTop:8}}>
-                    <span>🌙</span>
-                    <span style={{fontFamily:"'Playfair Display',serif",fontSize:16,fontWeight:700,color:C.gold}}>{form.nuits} nuits</span>
-                    <span style={{fontSize:12,color:C.mist}}>— du {new Date(form.dateStart).toLocaleDateString("fr-FR",{day:"numeric",month:"long"})} au {new Date(form.dateEnd).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})}</span>
-                  </div>
-                )}
-                {(!form.dateStart||!form.dateEnd)&&(
-                  <div id="field-nuits" style={{marginTop:10}}>
-                    <span style={{...lbl,color:C.mist}}>Ou combien de nuits si dates inconnues ?</span>
-                    <div style={{display:"flex",alignItems:"center",gap:10}}>
-                      <div style={{...inpBox,width:80}}><input type="number" min="1" max="90" style={{...inp,padding:"9px 10px",textAlign:"center"}} value={form.nuits} onChange={e=>setF("nuits",parseInt(e.target.value)||1)}/></div>
-                      <span style={{fontSize:13,color:C.mist}}>nuits</span>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 
@@ -718,7 +1187,7 @@ window.onload=function(){
             </div>
 
             <button onClick={generate} style={{width:"100%",padding:"16px",background:C.rust,color:"#fff",border:"none",borderRadius:6,fontFamily:"'Playfair Display',serif",fontStyle:"italic",fontSize:19,cursor:"pointer"}}>
-              {uploadedFile?"📎 Analyser mes notes et créer mon plan →":"Créer mon plan de vacances avec Sofia →"}
+              {uploadedFile?tr.btnFile:uploadedFile?tr.btnFile:tr.btn}
             </button>
             <div style={{textAlign:"center",marginTop:8,fontFamily:"'DM Mono',monospace",fontSize:8,color:"#bbb",letterSpacing:1}}>
               ⓘ {uploadedFile?"Sofia analysera ton document pour créer un plan complet":"Destination, Budget et Hébergement sont nécessaires"}
@@ -732,7 +1201,7 @@ window.onload=function(){
         <div style={{textAlign:"center",padding:"100px 24px"}}>
           <div style={{fontSize:52,display:"inline-block",animation:"sp 2s linear infinite"}}>🧭</div>
           <div style={{fontFamily:"'Playfair Display',serif",fontSize:24,fontStyle:"italic",marginTop:18}}>
-            {uploadedFile?"Sofia lit tes notes et prépare ton aventure…":"Sofia prépare ton aventure…"}
+            {uploadedFile?tr.loadingFile:tr.loading}
           </div>
           <div style={{display:"flex",justifyContent:"center",gap:12,marginTop:14,flexWrap:"wrap"}}>
             {["🗺️ Itinéraire","📅 Agenda","⭐ Incontournables","🏨 Hébergements","🍽️ Restos","🎯 Sorties","🧳 Valise"].map((t,i)=>(
@@ -749,9 +1218,7 @@ window.onload=function(){
 
             {/* Hero */}
             <div style={{position:"relative",height:200,overflow:"hidden",background:C.ink,flexShrink:0}}>
-              {destDisplay&&<img
-                src={usePhoto(`${destDisplay} ville paysage panoramique`)||`https://picsum.photos/seed/${enc2(destDisplay)}/1200/500`}
-                alt={destDisplay} style={{width:"100%",height:"100%",objectFit:"cover",opacity:.55}}/>}
+              <HeroPhoto query={destDisplay ? `${destDisplay} ville paysage panoramique` : "travel landscape"}/>
               <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:24}}>
                 <div style={{fontFamily:"'DM Mono',monospace",fontSize:8,letterSpacing:4,color:C.gold,marginBottom:8}}>✦ On The Road Again ✦</div>
                 <div style={{fontFamily:"'Playfair Display',serif",fontSize:"clamp(20px,4vw,40px)",fontWeight:900,color:"#fff",textShadow:"0 2px 8px rgba(0,0,0,.6)"}}>{destDisplay}</div>
@@ -897,13 +1364,13 @@ window.onload=function(){
             </div>
             <div style={{borderTop:"1px solid "+C.parch,padding:"10px 12px",flexShrink:0}}>
               <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:8}}>
-                {["Ajoute une journée","Change le jour 2","Plus de randonnées","Hébergement moins cher","Version végétarienne","Optimise le budget"].map(s=>(
+                {tr.chatSug.map(s=>(
                   <button key={s} onClick={()=>setChatIn(s)} style={{padding:"4px 8px",background:C.cream,border:"1px solid "+C.parch,borderRadius:12,fontFamily:"'DM Mono',monospace",fontSize:8,cursor:"pointer",color:"#888"}}>{s}</button>
                 ))}
               </div>
               <div style={{display:"flex",gap:8}}>
                 <input value={chatIn} onChange={e=>setChatIn(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendChat()}
-                  placeholder="Demande un changement à Sofia…" disabled={chatLoad}
+                  placeholder=tr.chatPH disabled={chatLoad}
                   style={{flex:1,padding:"9px 13px",border:"1.5px solid "+C.parch,borderRadius:20,background:C.cream,fontFamily:"'DM Sans',sans-serif",fontSize:12,color:C.ink,outline:"none"}}/>
                 <button onClick={sendChat} disabled={!chatIn.trim()||chatLoad}
                   style={{padding:"9px 14px",background:chatIn.trim()&&!chatLoad?C.rust:"#ccc",color:"#fff",border:"none",borderRadius:20,cursor:chatIn.trim()&&!chatLoad?"pointer":"not-allowed",fontSize:15,flexShrink:0}}>➤</button>
