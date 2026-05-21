@@ -70,15 +70,15 @@ const T={
     other:"✏️ Autre",stayHome:"🏠 Je dors chez moi",
     addCat:"Ajouter dans",myStuff:"🧳 Mes affaires personnelles",myStuffPH:"Coussins, fromages, café, couteaux…",
     note:"Ajouter une note",noteClose:"Fermer",
-    chat:tr.chat,chatSub:tr.chatSub,chatPH:tr.chatPH,
+    chat:"Chat avec Sofia",chatSub:"Demande un changement → plan mis à jour",chatPH:"Demande un changement à Sofia…",
     months:["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"],
     days:["Lu","Ma","Me","Je","Ve","Sa","Di"],
-    loading:tr.loading,loadingFile:tr.loadingFile,
-    chatSug:tr.chatSug,
-    new:tr.new,overTitle:tr.overTitle,overSub:"Les serveurs sont surchargés. Attends 1-2 minutes et réessaie.",
-    uploadTitle:tr.uploadTitle,uploadSub:tr.uploadSub,
-    uploadCTA:tr.uploadCTA,uploadFmt:tr.uploadFmt,
-    uploadLoaded:tr.uploadLoaded,uploadHint:tr.uploadHint,
+    loading:"Sofia prépare ton aventure…",loadingFile:"Sofia lit tes notes et prépare ton aventure…",
+    chatSug:["Ajoute une journée","Change le jour 2","Plus de randonnées","Hébergement moins cher","Version végétarienne","Optimise le budget"],
+    new:"← Nouveau",overTitle:"Génération échouée",overSub:"Les serveurs sont surchargés. Attends 1-2 minutes et réessaie.",
+    uploadTitle:"Partage tes notes ou idées à Sofia",uploadSub:"Photo d'un carnet, article, liste… Sofia lit tout et crée ton voyage.",
+    uploadCTA:"Glisse ou clique pour importer",uploadFmt:"JPG, PNG, PDF, TXT — max 15 Mo",
+    uploadLoaded:"FICHIER CHARGÉ",uploadHint:"Remplis le formulaire pour affiner, ou laisse Sofia tout déduire.",
     langPick:"Langue",
   },
   EN:{
@@ -381,9 +381,12 @@ const T={
   },
 };
 
+// Module-level tr fallback (used during SSR initialization)
+const tr_default = T.FR;
+
 // ─── Date Range Picker ─────────────────────────────────────
 function DateRangePicker({dateStart,dateEnd,nuits,onDateStart,onDateEnd,onNuits,lang}){
-  const tr=T[lang]||T.FR;
+  const tr=(T&&T[lang])?T[lang]:T.FR;
   const [curMonth,setCurMonth]=useState(()=>{
     const d=dateStart?new Date(dateStart):new Date();
     return new Date(d.getFullYear(),d.getMonth(),1);
@@ -861,7 +864,7 @@ export default function SofiaPlanner(){
   const [overloaded,setOverloaded]=useState(false);
   const [uploadedFile,setUploadedFile]=useState(null);
   const [lang,setLang]=useState("FR");
-  const tr=T[lang]||T.FR;
+  const tr=(typeof T !== 'undefined' && T[lang]) ? T[lang] : T.FR;
   const bottomRef=useRef(null);
   useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"});},[msgs]);
 
