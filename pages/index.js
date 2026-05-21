@@ -314,7 +314,16 @@ export default function SofiaPlanner(){
   const [tab,setTab]=useState("days");
   const [overloaded,setOverloaded]=useState(false);
   const [uploadedFile,setUploadedFile]=useState(null);
-  const tr=(typeof T !== 'undefined' && T[lang]) ? T[lang] : T.FR;
+  const tr={
+  btn:"Créer mon plan de vacances avec Sofia →",
+  btnFile:"📎 Analyser mes notes et créer mon plan →",
+  hint:"Destination, Budget et Hébergement sont nécessaires",
+  hintFile:"Sofia analysera ton document pour créer un plan complet",
+  loading:"Sofia prépare ton aventure…",
+  loadingFile:"Sofia lit tes notes et prépare ton aventure…",
+  chatPH:"Demande une modification à Sofia…",
+  chatSug:["Ajouter un jour","Modifier le jour 2","Plus de randonnées","Hébergement moins cher","Version végétarienne","Optimiser le budget"]
+};
   const bottomRef=useRef(null);
   useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"});},[msgs]);
 
