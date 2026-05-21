@@ -73,7 +73,8 @@ async function callClaude(system, messages, retries=2) {
 
 export default async function handler(req, res) {
   if (req.method!=="POST") return res.status(405).end();
-  const { messages, formData, currentPlan, fileData, fileType } = req.body;
+  const { messages, formData, currentPlan, fileData, fileType, lang } = req.body;
+  const langName = {FR:'français',EN:'English',NL:'Nederlands',DE:'Deutsch',IT:'italiano',ES:'español',PT:'português',LU:'Lëtzebuergesch',PL:'polonais',RO:'roumain',SV:'suédois',DA:'danois'}[lang||'FR']||'français';
 
   const FMT = `{
 "intro":"Message chaleureux personnalisé",
@@ -94,7 +95,7 @@ export default async function handler(req, res) {
 {"category":"Divers","items":["Argent liquide local","Carte bancaire internationale","Sac à dos de jour","Gourde réutilisable","Guide ou carte locale"]}
 ]}`;
 
-  const sysForm = `Tu es Sofia, conseillère de voyage experte pour "On The Road Again". Réponds TOUJOURS en français.
+  const sysForm = `Tu es Sofia, conseillère de voyage experte pour "On The Road Again". Réponds TOUJOURS en ${langName}.
 CRITICAL: Réponds UNIQUEMENT avec du JSON brut valide. PAS de texte. PAS de backticks. Commence par { et termine par }.
 
 RÈGLE CRITIQUE pour le champ "location" des jours d'itinéraire:
@@ -115,7 +116,7 @@ Règles additionnelles:
 - Inclure les incontournables même si non demandés
 - Si image/document joint → extraire toutes les infos visibles`;
 
-  const sysChat = `Tu es Sofia, conseillère de voyage experte pour "On The Road Again". Réponds TOUJOURS en français. Tu es chaleureuse.
+  const sysChat = `Tu es Sofia, conseillère de voyage experte pour "On The Road Again". Réponds TOUJOURS en ${langName}. Tu es chaleureuse.
 ${currentPlan ? `Plan actuel pour ${currentPlan.destination||'la destination'}:
 ${planSummary(currentPlan)}
 
