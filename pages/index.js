@@ -630,10 +630,10 @@ window.onload=function(){
             </div>
 
             <button onClick={generate} style={{width:"100%",padding:"16px",background:C.rust,color:"#fff",border:"none",borderRadius:6,fontFamily:"'Playfair Display',serif",fontStyle:"italic",fontSize:19,cursor:"pointer"}}>
-              {uploadedFile?"Créer mon plan de vacances avec Sofia →"File:"Créer mon plan de vacances avec Sofia →"}
+              {uploadedFile?"📎 Analyser mes notes et créer mon plan →":"Créer mon plan de vacances avec Sofia →"}
             </button>
             <div style={{textAlign:"center",marginTop:8,fontFamily:"'DM Mono',monospace",fontSize:8,color:"#bbb",letterSpacing:1}}>
-              ⓘ {uploadedFile?"Destination, Budget et Hébergement sont nécessaires"File:"Destination, Budget et Hébergement sont nécessaires"}
+              ⓘ {uploadedFile?"Sofia analysera ton document pour créer un plan complet":"Destination, Budget et Hébergement sont nécessaires"}
             </div>
           </div>
         </div>
@@ -644,7 +644,7 @@ window.onload=function(){
         <div style={{textAlign:"center",padding:"100px 24px"}}>
           <div style={{fontSize:52,display:"inline-block",animation:"sp 2s linear infinite"}}>🧭</div>
           <div style={{fontFamily:"'Playfair Display',serif",fontSize:24,fontStyle:"italic",marginTop:18}}>
-            {uploadedFile?"Sofia prépare ton aventure…"File:"Sofia prépare ton aventure…"}
+            {uploadedFile?"Sofia lit tes notes et prépare ton aventure…":"Sofia prépare ton aventure…"}
           </div>
           <div style={{display:"flex",justifyContent:"center",gap:12,marginTop:14,flexWrap:"wrap"}}>
             {["🗺️ Itinéraire","📅 Agenda","⭐ Incontournables","🏨 Hébergements","🍽️ Restos","🎯 Sorties","🧳 Valise"].map((t,i)=>(
