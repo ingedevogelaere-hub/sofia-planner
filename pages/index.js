@@ -1,206 +1,240 @@
 import Head from "next/head";
 import { useState, useRef, useEffect } from "react";
 
+// ─── Config ────────────────────────────────────────────────
 const TP_MARKER = "";
+const UNSPLASH_KEY = "z33MKSymKePZB5EmPynqEyxjxQ5ujCrPD3Bn5-FxtYU";
+const photoCache = {};
 
-const STYLES_LIST = ["🏛️ Culture","🌿 Nature","🍷 Gastronomie","🏖️ Plages","⛰️ Montagne","🥾 Randonnées","🧗 Aventure","🎨 Art","📸 Photo","👨‍👩‍👧 Famille","🚴 Vélo","🏕️ Camping","🧘 Bien-être","🛍️ Shopping"];
-const HEBERGEMENTS = ["🏨 Hôtel","🏠 Airbnb / Location","⛺ Camping","🛏️ B&B / Chambre d'hôtes","💎 Hôtel de luxe","🏡 Gîte rural","🛖 Auberge de jeunesse","🏠 Je dors chez moi"];
-const BUDGETS = ["🌱 Économique (< 80€/j)","💼 Moyen (80-150€/j)","✨ Confort (150-250€/j)","💎 Luxe (250€+/j)"];
-const TRANSPORTS_LOCAL = ["🚗 Voiture de location","🚌 Transports en commun","🚲 Vélo","🚶 À pied","🛵 Scooter","🚐 Van / Camping-car"];
-const TRANSPORT_TO = ["✈️ Avion","🚄 Train","🚗 Ma voiture","🚗 Voiture louée","🚌 Bus","⛴️ Ferry","🚢 Croisière","🛺 Navette"];
-const VOYAGEURS = ["Solo","2 adultes","Famille (bébé 0-3 ans)","Famille (enfants 4-12 ans)","Famille (ados)","Groupe d'amis","Couple senior"];
-
-const enc = s => encodeURIComponent(s||"");
-
-function getAdults(v, autre) {
-  const val = v === "Autre" ? (autre||"") : (v||"");
-  if (val==="Solo") return 1;
-  if (val.includes("2 adultes")||val.includes("Couple")) return 2;
-  if (val.includes("Groupe")) return 4;
-  return 2;
-}
-
-function buildLinks(type, dest, dateStart, dateEnd, voyageurs, voyageurs_autre, itemName="") {
-  const adults = getAdults(voyageurs, voyageurs_autre);
-  const cin = dateStart||""; const cout = dateEnd||"";
-  const aid = TP_MARKER ? `&aid=${TP_MARKER}` : "";
-  switch(type) {
-    case "accommodations": return [
-      {l:"Booking",c:"#003580",u:`https://www.booking.com/search.html?ss=${enc(itemName||dest)}&checkin=${cin}&checkout=${cout}&group_adults=${adults}${aid}`},
-      {l:"Airbnb",c:"#FF5A5F",u:`https://www.airbnb.fr/s/${enc(dest)}/homes?checkin=${cin}&checkout=${cout}&adults=${adults}`},
-      {l:"Hotels.com",c:"#C00",u:`https://fr.hotels.com/search.do?q-destination=${enc(itemName||dest)}&q-check-in=${cin}&q-check-out=${cout}&q-rooms=1&q-room-0-adults=${adults}`},
-    ];
-    case "restaurants": return [
-      {l:"TripAdvisor",c:"#00AA6C",u:`https://www.tripadvisor.fr/Search?q=${enc(itemName||'restaurants')}+${enc(dest)}`},
-      {l:"TheFork",c:"#00B551",u:`https://www.thefork.fr/recherche?q=${enc(itemName||dest)}`},
-      {l:"Google Maps",c:"#4285F4",u:`https://www.google.com/maps/search/${enc(itemName||'restaurants')}+${enc(dest)}`},
-    ];
-    case "hikes": return [
-      {l:"AllTrails",c:"#3D6B35",u:`https://www.alltrails.com/explore?q=${enc(itemName||dest)}`},
-      {l:"Visorando",c:"#5D8B3C",u:`https://www.visorando.com/recherche/?q=${enc(itemName||dest)}`},
-      {l:"Komoot",c:"#6EA8C8",u:`https://www.komoot.com/discover/${enc(dest).replace(/%20/g,'-')}`},
-      {l:"Google Maps",c:"#4285F4",u:`https://www.google.com/maps/search/${enc(itemName||'randonnée')}+${enc(dest)}`},
-    ];
-    case "activities": return [
-      {l:"Viator",c:"#142A51",u:`https://www.viator.com/searchResults/all?text=${enc(itemName||dest)}&startDate=${cin}`},
-      {l:"GetYourGuide",c:"#FF6B35",u:`https://www.getyourguide.fr/s/?q=${enc(itemName||dest)}&date_from=${cin}`},
-      {l:"Site officiel",c:"#555",u:`https://www.google.com/search?q=${enc(itemName)}+${enc(dest)}+officiel`},
-    ];
-    case "remarkable_sites": return [
-      {l:"Office Tourisme",c:"#E84D3D",u:`https://www.google.com/search?q=office+tourisme+${enc(dest)}+officiel`},
-      {l:"UNESCO",c:"#009EDB",u:`https://whc.unesco.org/fr/list/`},
-      {l:"Google Maps",c:"#4285F4",u:`https://www.google.com/maps/search/${enc(dest)}+sites`},
-    ];
-    default: return [];
-  }
-}
-
-function buildMapUrl(plan, dest) {
-  if (!plan) return `https://www.google.com/maps/search/${enc(dest)}`;
-  // Use only the first part of location (main name), add city
-  const clean = loc => {
-    if (!loc) return null;
-    const main = loc.split(',')[0].trim();
-    return main && !main.toLowerCase().includes(dest.toLowerCase().split(',')[0]) ? main+', '+dest : main;
-  };
-  const locs = (plan.days||[]).map(d=>clean(d.location)).filter(Boolean);
-  if (!locs.length) return `https://www.google.com/maps/search/${enc(dest)}`;
-  if (locs.length===1) return `https://www.google.com/maps/search/${enc(locs[0])}`;
-  return `https://www.google.com/maps/dir/${locs.map(l=>enc(l)).join("/")}`;
-}
-
-function photoUrl(dest, tag="tourism") {
-  return `https://source.unsplash.com/800x400/?${enc(dest+" "+tag)}`;
-}
-
-// ─── Styles helpers ────────────────────────────────────────
-const COLORS = {
-  gold:"#B8972E", rust:"#C1440E", forest:"#2C4A3E", navy:"#1A3A5C",
-  ink:"#1C1A14", cream:"#FAF6EE", parch:"#EDE0C4", mist:"#8A9E93"
+// ─── Design tokens ─────────────────────────────────────────
+const C = {
+  gold:"#B8972E",rust:"#C1440E",forest:"#2C4A3E",navy:"#1A3A5C",
+  ink:"#1C1A14",cream:"#FAF6EE",parch:"#EDE0C4",mist:"#8A9E93"
 };
 
-function selBtn(active, activeColor=COLORS.navy) {
-  return {
-    padding:"9px 12px", border:"1.5px solid", borderRadius:4, textAlign:"left", width:"100%",
-    background: active ? activeColor : "transparent",
-    borderColor: active ? activeColor : COLORS.parch,
-    color: active ? "#fff" : "#666",
-    fontFamily:"'DM Sans',sans-serif", fontSize:12, cursor:"pointer", transition:"all .15s"
-  };
+function selBtn(active,color=C.navy){
+  return{padding:"9px 12px",border:"1.5px solid",borderRadius:6,textAlign:"left",width:"100%",
+    background:active?color+"18":"transparent",borderColor:active?color:C.parch,
+    color:active?color:"#666",fontFamily:"'DM Sans',sans-serif",fontSize:12,cursor:"pointer",
+    fontWeight:active?600:400,transition:"all .15s"};
 }
-function pillBtn(active, activeColor=COLORS.navy) {
-  return {
-    padding:"7px 13px", border:"1.5px solid", borderRadius:100,
-    background: active ? activeColor : "transparent",
-    borderColor: active ? activeColor : COLORS.parch,
-    color: active ? "#fff" : "#888",
-    fontFamily:"'DM Sans',sans-serif", fontSize:12, cursor:"pointer", transition:"all .15s"
-  };
+function pillBtn(active,color=C.navy){
+  return{padding:"7px 13px",border:"1.5px solid",borderRadius:100,
+    background:active?color+"18":"transparent",borderColor:active?color:C.parch,
+    color:active?color:"#888",fontFamily:"'DM Sans',sans-serif",fontSize:12,cursor:"pointer",
+    fontWeight:active?600:400,transition:"all .15s"};
 }
 
-// ─── Small components ──────────────────────────────────────
-function Photo({ dest, tag="tourism", h=140 }) {
-  const [src,setSrc] = useState(photoUrl(dest,tag));
-  return (
-    <div style={{height:h,overflow:"hidden",background:COLORS.parch,flexShrink:0}}>
-      <img src={src} alt={dest} style={{width:"100%",height:"100%",objectFit:"cover"}} loading="lazy"
-        onError={()=>setSrc(`https://picsum.photos/seed/${enc(dest)}-${tag}/800/400`)}/>
+// ─── Constants ─────────────────────────────────────────────
+const STYLES_LIST=["🏛️ Culture","🌿 Nature","🍷 Gastronomie","🏖️ Plages","⛰️ Montagne","🥾 Randonnées","🧗 Aventure","🎨 Art","📸 Photo","👨‍👩‍👧 Famille","🚴 Vélo","🏕️ Camping","🧘 Bien-être","🛍️ Shopping"];
+const HEBERGEMENTS=["🏨 Hôtel","🏠 Airbnb / Location","⛺ Camping","🛏️ B&B / Chambre d'hôtes","💎 Hôtel de luxe","🏡 Gîte rural","🛖 Auberge de jeunesse","🏠 Je dors chez moi"];
+const BUDGETS=["🌱 Économique (< 80€/j)","💼 Moyen (80-150€/j)","✨ Confort (150-250€/j)","💎 Luxe (250€+/j)"];
+const TRANSPORTS_LOCAL=["🚗 Voiture de location","🚌 Transports en commun","🚲 Vélo","🚶 À pied","🛵 Scooter","🚐 Van / Camping-car"];
+const TRANSPORT_TO=["✈️ Avion","🚄 Train","🚗 Ma voiture","🚗 Voiture louée","🚌 Bus","⛴️ Ferry","🚢 Croisière","🛺 Navette"];
+const VOYAGEURS=["Solo","2 adultes","Famille (bébé 0-3 ans)","Famille (enfants 4-12 ans)","Famille (ados)","Groupe d'amis","Couple senior"];
+
+const enc=s=>encodeURIComponent(s||"");
+const enc2=s=>s?s.toLowerCase().replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,""):"";
+
+function getAdults(v,a){const val=v==="Autre"?(a||""):(v||"");if(val==="Solo")return 1;if(val.includes("2 adultes")||val.includes("Couple"))return 2;if(val.includes("Groupe"))return 4;return 2;}
+
+// ─── Unsplash photo hook ────────────────────────────────────
+function usePhoto(query){
+  const fallback=`https://picsum.photos/seed/${enc2(query||"travel")}/800/400`;
+  const [src,setSrc]=useState(fallback);
+  useEffect(()=>{
+    if(!query||!UNSPLASH_KEY) return;
+    const cacheKey=query.substring(0,60);
+    if(photoCache[cacheKey]){setSrc(photoCache[cacheKey]);return;}
+    fetch(`https://api.unsplash.com/photos/random?query=${enc(query)}&orientation=landscape&client_id=${UNSPLASH_KEY}`)
+      .then(r=>r.json())
+      .then(d=>{if(d?.urls?.small){photoCache[cacheKey]=d.urls.small;setSrc(d.urls.small);}})
+      .catch(()=>{});
+  },[query]);
+  return src;
+}
+
+function Photo({query,h=140}){
+  const src=usePhoto(query);
+  return(
+    <div style={{height:h,overflow:"hidden",background:C.parch,flexShrink:0}}>
+      <img src={src} alt={query||""} style={{width:"100%",height:"100%",objectFit:"cover"}} loading="lazy"/>
     </div>
   );
 }
 
-function LinkBar({type,dest,dateStart,dateEnd,voyageurs,voyageurs_autre,itemName,itemWebsite}) {
-  const links = buildLinks(type,dest,dateStart,dateEnd,voyageurs,voyageurs_autre,itemName);
-  return (
+// ─── Link builders ──────────────────────────────────────────
+function buildLinks(type,dest,dateStart,dateEnd,voy,voyA,itemName=""){
+  const adults=getAdults(voy,voyA);
+  const cin=dateStart||"";const cout=dateEnd||"";
+  const aid=TP_MARKER?`&aid=${TP_MARKER}`:"";
+  const d=enc(dest);const it=enc(itemName||dest);
+  switch(type){
+    case "accommodations":return[
+      {l:"Booking",c:"#003580",u:`https://www.booking.com/search.html?ss=${it}&checkin=${cin}&checkout=${cout}&group_adults=${adults}${aid}`},
+      {l:"Airbnb",c:"#FF5A5F",u:`https://www.airbnb.fr/s/${enc(dest)}/homes?checkin=${cin}&checkout=${cout}&adults=${adults}&locale=fr`},
+      {l:"Hotels.com",c:"#C00",u:`https://fr.hotels.com/search.do?q-destination=${it}&q-check-in=${cin}&q-check-out=${cout}&q-room-0-adults=${adults}`},
+    ];
+    case "restaurants":return[
+      {l:"TripAdvisor",c:"#00AA6C",u:`https://www.tripadvisor.fr/Search?q=${enc(itemName||"restaurants")}+${d}`},
+      {l:"TheFork",c:"#00B551",u:`https://www.thefork.fr/recherche?q=${it}`},
+      {l:"Google Maps",c:"#4285F4",u:`https://www.google.com/maps/search/${enc(itemName||"restaurant")}+${d}`},
+    ];
+    case "outings":return[
+      {l:"AllTrails",c:"#3D6B35",u:`https://www.alltrails.com/explore?q=${it}&ref=header_search`},
+      {l:"Visorando",c:"#5D8B3C",u:`https://www.visorando.com/recherche/?q=${it}`},
+      {l:"GetYourGuide",c:"#FF6B35",u:`https://www.getyourguide.fr/s/?q=${it}&date_from=${cin}`},
+      {l:"Viator",c:"#142A51",u:`https://www.viator.com/searchResults/all?text=${it}&startDate=${cin}`},
+      {l:"Google Maps",c:"#4285F4",u:`https://www.google.com/maps/search/${enc(itemName||"activité")}+${d}`},
+    ];
+    case "remarkable_sites":return[
+      {l:"Office Tourisme",c:"#E84D3D",u:`https://www.google.com/search?q=office+tourisme+officiel+${d}`},
+      {l:"Patrimoine UNESCO",c:"#009EDB",u:`https://www.google.com/search?q=UNESCO+patrimoine+mondial+${d}`},
+      {l:"Google Maps",c:"#4285F4",u:`https://www.google.com/maps/search/sites+touristiques+${d}`},
+    ];
+    default:return[];
+  }
+}
+
+function buildMapUrl(plan,dest){
+  if(!plan||!dest||dest==="Voyage") return `https://www.google.com/maps/search/${enc(dest||"voyage")}`;
+  const clean=loc=>{
+    if(!loc) return null;
+    const main=loc.split(',')[0].trim();
+    if(!main||main.toLowerCase()==="voyage") return null;
+    const d=dest.split(',')[0].trim();
+    return main.toLowerCase().includes(d.toLowerCase())?main:`${main}, ${d}`;
+  };
+  const locs=(plan.days||[]).map(d=>clean(d.location)).filter(Boolean);
+  if(!locs.length) return `https://www.google.com/maps/search/${enc(dest)}`;
+  if(locs.length===1) return `https://www.google.com/maps/search/${enc(locs[0])}`;
+  return `https://www.google.com/maps/dir/${locs.map(l=>enc(l)).join("/")}`;
+}
+
+// ─── Small UI components ────────────────────────────────────
+function LinkBar({type,dest,dateStart,dateEnd,voy,voyA,itemName,itemWebsite}){
+  const links=buildLinks(type,dest,dateStart,dateEnd,voy,voyA,itemName);
+  return(
     <div style={{display:"flex",flexWrap:"wrap",gap:5,marginTop:10}}>
-      {itemWebsite && <a href={itemWebsite} target="_blank" rel="noopener noreferrer" style={{padding:"4px 10px",background:COLORS.ink,color:COLORS.gold,borderRadius:3,fontSize:10,fontFamily:"'DM Mono',monospace"}}>🌐 Site officiel</a>}
+      {itemWebsite&&<a href={itemWebsite} target="_blank" rel="noopener noreferrer" style={{padding:"4px 10px",background:C.ink,color:C.gold,borderRadius:3,fontSize:10,fontFamily:"'DM Mono',monospace"}}>🌐 Site officiel</a>}
       {links.map(l=><a key={l.l} href={l.u} target="_blank" rel="noopener noreferrer" style={{padding:"4px 10px",background:l.c,color:"#fff",borderRadius:3,fontSize:10,fontFamily:"'DM Mono',monospace"}}>🔗 {l.l}</a>)}
     </div>
   );
 }
 
-function NoteField({id}) {
-  const [open,setOpen]=useState(false); const [val,setVal]=useState("");
-  return (
+function NoteField({id}){
+  const [open,setOpen]=useState(false);const [val,setVal]=useState("");
+  return(
     <div style={{marginTop:8}}>
-      <button onClick={()=>setOpen(o=>!o)} style={{background:"none",border:"none",cursor:"pointer",fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:1,textTransform:"uppercase",color:COLORS.mist}}>
+      <button onClick={()=>setOpen(o=>!o)} style={{background:"none",border:"none",cursor:"pointer",fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:1,textTransform:"uppercase",color:C.mist}}>
         📝 {open?"Fermer":"Ajouter une note"}
       </button>
-      {open&&<textarea value={val} onChange={e=>setVal(e.target.value)} placeholder="Tes notes…" style={{width:"100%",padding:"8px 10px",border:"1.5px solid "+COLORS.parch,borderRadius:4,background:COLORS.cream,fontFamily:"'DM Sans',sans-serif",fontSize:12,resize:"none",outline:"none",minHeight:56,marginTop:4,boxSizing:"border-box"}}/>}
-      {!open&&val&&<div style={{fontSize:11,color:COLORS.mist,fontStyle:"italic",marginTop:4}}>📌 {val}</div>}
+      {open&&<textarea value={val} onChange={e=>setVal(e.target.value)} placeholder="Tes notes…" style={{width:"100%",padding:"8px 10px",border:"1.5px solid "+C.parch,borderRadius:4,background:C.cream,fontFamily:"'DM Sans',sans-serif",fontSize:12,resize:"none",outline:"none",minHeight:56,marginTop:4,boxSizing:"border-box"}}/>}
+      {!open&&val&&<div style={{fontSize:11,color:C.mist,fontStyle:"italic",marginTop:4}}>📌 {val}</div>}
     </div>
   );
 }
 
-function Chip({label,bg=COLORS.parch,color=COLORS.ink}) {
-  return <span style={{display:"inline-block",padding:"3px 9px",borderRadius:100,background:bg,color,fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:1,textTransform:"uppercase",flexShrink:0}}>{label}</span>;
+function Chip({label,bg=C.parch,color=C.ink}){
+  return<span style={{display:"inline-block",padding:"3px 9px",borderRadius:100,background:bg,color,fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:1,textTransform:"uppercase",flexShrink:0}}>{label}</span>;
 }
 
-function DayCard({d,form}) {
-  return (
-    <div style={{background:"#fff",border:"1.5px solid "+COLORS.parch,borderRadius:8,overflow:"hidden",marginBottom:20,boxShadow:"0 2px 8px rgba(0,0,0,.04)"}}>
-      <Photo dest={d.location||form.destination} tag="tourism" h={160}/>
+function DayCard({d,form,plan,setTab}){
+  const photoQuery=d.unsplash_query||(d.location?`${d.location} ${form.destination} paysage`:form.destination+" paysage");
+  return(
+    <div style={{background:"#fff",border:"1.5px solid "+C.parch,borderRadius:8,overflow:"hidden",marginBottom:20,boxShadow:"0 2px 8px rgba(0,0,0,.04)"}}>
+      <Photo query={photoQuery} h={160}/>
       <div style={{padding:"18px 20px"}}>
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
-          <div style={{width:40,height:40,borderRadius:"50%",background:COLORS.ink,color:COLORS.gold,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700,flexShrink:0}}>{d.num}</div>
+          <div style={{width:40,height:40,borderRadius:"50%",background:C.ink,color:C.gold,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700,flexShrink:0}}>{d.num}</div>
           <div>
             <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700}}>{d.title}</div>
-            {d.location&&<a href={`https://www.google.com/maps/search/${enc(d.location+", "+form.destination)}`} target="_blank" rel="noopener noreferrer" style={{fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:2,color:COLORS.gold,textTransform:"uppercase",marginTop:2,display:"block",textDecoration:"none"}}>📍 {d.location} ↗</a>}
+            {d.location&&<a href={`https://www.google.com/maps/search/${enc(d.location+", "+form.destination)}`} target="_blank" rel="noopener noreferrer" style={{fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:2,color:C.gold,textTransform:"uppercase",marginTop:2,display:"block"}}>📍 {d.location} ↗</a>}
           </div>
         </div>
         {[["🌅 Matin",d.morning],["☀️ Après-midi",d.afternoon],["🌙 Soir",d.evening]].map(([lbl,val])=>val&&(
-          <div key={lbl} style={{marginBottom:12,paddingBottom:12,borderBottom:"1px solid "+COLORS.cream}}>
-            <div style={{fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:2,textTransform:"uppercase",color:COLORS.gold,marginBottom:4}}>{lbl}</div>
+          <div key={lbl} style={{marginBottom:12,paddingBottom:12,borderBottom:"1px solid "+C.cream}}>
+            <div style={{fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:2,textTransform:"uppercase",color:C.gold,marginBottom:4}}>{lbl}</div>
             <div style={{fontSize:13,lineHeight:1.7,color:"#3a3830"}}>{val}</div>
           </div>
         ))}
-        {d.tip&&<div style={{background:COLORS.cream,border:"1px solid "+COLORS.parch,borderRadius:4,padding:"8px 12px",fontSize:12,color:COLORS.mist,fontStyle:"italic"}}>💡 {d.tip}</div>}
+        {d.tip&&<div style={{background:C.cream,border:"1px solid "+C.parch,borderRadius:4,padding:"8px 12px",fontSize:12,color:C.mist,fontStyle:"italic",marginBottom:10}}>💡 {d.tip}</div>}
+        {/* Link to relevant outings */}
+        {plan?.outings?.length>0&&(
+          <button onClick={()=>setTab("outings")} style={{background:"none",border:"1px solid "+C.forest,borderRadius:4,padding:"5px 10px",cursor:"pointer",fontFamily:"'DM Mono',monospace",fontSize:9,color:C.forest,letterSpacing:1}}>
+            🎯 Voir les sorties & randonnées
+          </button>
+        )}
         <NoteField id={`day-${d.num}`}/>
       </div>
     </div>
   );
 }
 
-function ItemCard({item,type,i,form}) {
-  const dest=form.destination;
-  const tags={accommodations:"hotel room",restaurants:"restaurant food",hikes:"hiking trail",activities:"tourism",remarkable_sites:"landmark"};
+function OutingCard({item,i,form}){
+  const isHike=item.type==="randonnée";
+  const photoQuery=item.unsplash_query||(item.name?`${item.name} ${form.destination}`:`${form.destination} ${isHike?"randonnée":"activité"}`);
+  return(
+    <div style={{background:"#fff",border:"1.5px solid "+C.parch,borderRadius:8,overflow:"hidden",marginBottom:14,boxShadow:"0 2px 8px rgba(0,0,0,.04)"}}>
+      <Photo query={photoQuery} h={120}/>
+      <div style={{padding:"14px 16px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+          <span style={{fontSize:18}}>{isHike?"🥾":"🎯"}</span>
+          <div style={{fontFamily:"'Playfair Display',serif",fontSize:15,fontWeight:700}}>{item.name}</div>
+        </div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:8}}>
+          {item.subtype&&<Chip label={item.subtype} bg={isHike?"#e8f5e9":"#e3f2fd"} color={isHike?"#2e7d32":"#1565c0"}/>}
+          {item.difficulty&&<Chip label={item.difficulty} bg={item.difficulty==="Facile"?"#e8f5e9":item.difficulty==="Difficile"?"#fce4ec":"#fff3e0"} color={item.difficulty==="Facile"?"#2e7d32":item.difficulty==="Difficile"?"#c62828":"#e65100"}/>}
+          {item.distance&&<Chip label={`📏 ${item.distance}`} bg="#f2f7f2" color="#3D5A3E"/>}
+          {item.duration&&<Chip label={`⏱️ ${item.duration}`} bg="#f2f7f2" color="#3D5A3E"/>}
+          {item.price&&<Chip label={`💰 ${item.price}`} bg={C.cream} color={C.mist}/>}
+        </div>
+        {item.highlights&&<div style={{fontSize:13,lineHeight:1.65,color:"#4a4640",marginBottom:6}}>👁️ {item.highlights}</div>}
+        {item.start_point&&<div style={{fontSize:12,color:C.forest,marginBottom:3,fontWeight:600}}>🚩 Départ : {item.start_point}</div>}
+        {item.transport_from_center&&<div style={{fontSize:12,color:C.forest,marginBottom:6}}>🚌 Accès : {item.transport_from_center}</div>}
+        {(item.address)&&<a href={`https://www.google.com/maps/search/${enc(item.address+", "+form.destination)}`} target="_blank" rel="noopener noreferrer" style={{display:"block",fontSize:12,color:C.gold,marginBottom:6}}>📍 {item.address} ↗</a>}
+        {item.info&&<div style={{fontSize:12,color:C.mist,fontStyle:"italic",marginBottom:6}}>💡 {item.info}</div>}
+        <LinkBar type="outings" dest={form.destination} dateStart={form.dateStart} dateEnd={form.dateEnd} voy={form.voyageurs} voyA={form.voyageurs_autre} itemName={item.name} itemWebsite={item.website}/>
+        <NoteField id={`outing-${i}`}/>
+      </div>
+    </div>
+  );
+}
+
+function ItemCard({item,type,i,form}){
+  const photoQuery=item.unsplash_query||(item.name?`${item.name} ${form.destination}`:`${form.destination} ${type==="accommodations"?"hôtel":type==="restaurants"?"restaurant":"tourisme"}`);
   const coordUrl=item.coords?`https://www.google.com/maps/search/?api=1&query=${item.coords[0]},${item.coords[1]}`:null;
-  return (
-    <div style={{background:"#fff",border:"1.5px solid "+COLORS.parch,borderRadius:8,overflow:"hidden",marginBottom:14,boxShadow:"0 2px 8px rgba(0,0,0,.04)"}}>
-      <Photo dest={item.name||dest} tag={tags[type]||"travel"} h={110}/>
+  return(
+    <div style={{background:"#fff",border:"1.5px solid "+C.parch,borderRadius:8,overflow:"hidden",marginBottom:14,boxShadow:"0 2px 8px rgba(0,0,0,.04)"}}>
+      <Photo query={photoQuery} h={110}/>
       <div style={{padding:"14px 16px"}}>
         <div style={{fontFamily:"'Playfair Display',serif",fontSize:15,fontWeight:700,marginBottom:8}}>{item.name}</div>
         <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:8}}>
           {item.label&&<Chip label={item.label} bg="#004A8F22" color="#004A8F"/>}
           {item.type&&<Chip label={item.type}/>}
           {item.cuisine&&<Chip label={item.cuisine} bg="#fff5f0" color="#8B2500"/>}
-          {item.difficulty&&<Chip label={item.difficulty} bg={item.difficulty==="Facile"?"#e8f5e9":item.difficulty==="Difficile"?"#fce4ec":"#fff3e0"} color={item.difficulty==="Facile"?"#2e7d32":item.difficulty==="Difficile"?"#c62828":"#e65100"}/>}
-          {item.distance&&<Chip label={`📏 ${item.distance}`} bg="#f2f7f2" color="#3D5A3E"/>}
-          {item.duration&&<Chip label={`⏱️ ${item.duration}`} bg="#f2f7f2" color="#3D5A3E"/>}
-          {item.price&&<Chip label={`💰 ${item.price}`} bg={COLORS.cream} color={COLORS.mist}/>}
+          {item.price&&<Chip label={`💰 ${item.price}`} bg={C.cream} color={C.mist}/>}
         </div>
-        {(item.address||item.location)&&<a href={coordUrl||`https://www.google.com/maps/search/${enc((item.address||item.location)+", "+dest)}`} target="_blank" rel="noopener noreferrer" style={{display:"block",fontSize:12,color:COLORS.gold,marginBottom:6,textDecoration:"none"}}>📍 {item.address||item.location} ↗</a>}
-        {item.start_point&&<div style={{fontSize:12,color:COLORS.forest,marginBottom:4}}>🚩 Départ : {item.start_point}</div>}
-        {item.transport_from_center&&<div style={{fontSize:12,color:COLORS.forest,marginBottom:6}}>🚌 Accès : {item.transport_from_center}</div>}
-        {(item.why||item.description||item.specialty||item.highlights||item.info)&&<div style={{fontSize:13,lineHeight:1.65,color:"#4a4640",marginBottom:6}}>{item.why||item.description||item.specialty||item.highlights||item.info}</div>}
-        {item.tip&&<div style={{fontSize:12,color:COLORS.mist,fontStyle:"italic",marginBottom:6}}>💡 {item.tip}</div>}
-        <LinkBar type={type} dest={dest} dateStart={form.dateStart} dateEnd={form.dateEnd} voyageurs={form.voyageurs} voyageurs_autre={form.voyageurs_autre} itemName={item.name} itemWebsite={item.website}/>
+        {(item.address||item.location)&&<a href={coordUrl||`https://www.google.com/maps/search/${enc((item.address||item.location)+", "+form.destination)}`} target="_blank" rel="noopener noreferrer" style={{display:"block",fontSize:12,color:C.gold,marginBottom:6}}>📍 {item.address||item.location} ↗</a>}
+        {(item.why||item.description||item.specialty||item.info)&&<div style={{fontSize:13,lineHeight:1.65,color:"#4a4640",marginBottom:6}}>{item.why||item.description||item.specialty||item.info}</div>}
+        {item.tip&&<div style={{fontSize:12,color:C.mist,fontStyle:"italic",marginBottom:6}}>💡 {item.tip}</div>}
+        <LinkBar type={type} dest={form.destination} dateStart={form.dateStart} dateEnd={form.dateEnd} voy={form.voyageurs} voyA={form.voyageurs_autre} itemName={item.name} itemWebsite={item.website}/>
         <NoteField id={`${type}-${i}`}/>
       </div>
     </div>
   );
 }
 
-function AgendaSection({agenda}) {
-  if (!agenda?.length) return <div style={{textAlign:"center",padding:40,color:COLORS.mist,fontStyle:"italic"}}>Aucun événement notable aux dates de votre voyage.</div>;
-  const colors={positive:{bg:"#e8f5e9",border:"#2e7d32",icon:"🎉"},negative:{bg:"#fce4ec",border:"#c62828",icon:"⚠️"},info:{bg:"#e3f2fd",border:"#1565c0",icon:"ℹ️"}};
-  return (
+function AgendaSection({agenda}){
+  if(!agenda?.length) return<div style={{textAlign:"center",padding:40,color:C.mist,fontStyle:"italic"}}>Aucune info particulière aux dates de votre voyage.</div>;
+  const cols={positive:{bg:"#e8f5e9",border:"#2e7d32",icon:"🎉"},negative:{bg:"#fce4ec",border:"#c62828",icon:"⚠️"},info:{bg:"#e3f2fd",border:"#1565c0",icon:"ℹ️"}};
+  return(
     <div>
       {agenda.map((ev,i)=>{
-        const c=colors[ev.type]||colors.info;
-        return (
-          <div key={i} style={{background:c.bg,border:`1.5px solid ${c.border}`,borderRadius:8,padding:"14px 16px",marginBottom:12,display:"flex",gap:12}}>
-            <div style={{fontSize:20,flexShrink:0}}>{c.icon}</div>
+        const col=cols[ev.type]||cols.info;
+        return(
+          <div key={i} style={{background:col.bg,border:`1.5px solid ${col.border}`,borderRadius:8,padding:"14px 16px",marginBottom:12,display:"flex",gap:12}}>
+            <div style={{fontSize:20,flexShrink:0}}>{col.icon}</div>
             <div>
               <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
                 <div style={{fontFamily:"'Playfair Display',serif",fontSize:14,fontWeight:700}}>{ev.name}</div>
@@ -215,106 +249,130 @@ function AgendaSection({agenda}) {
   );
 }
 
-function PackingSection({packing}) {
-  const [myItems,setMyItems]=useState([]); const [newItem,setNewItem]=useState(""); const [checked,setChecked]=useState({});
+// ─── Ma Valise with per-category custom items ───────────────
+function PackingSection({packing}){
+  const [catExtras,setCatExtras]=useState({});
+  const [catInputs,setCatInputs]=useState({});
+  const [myItems,setMyItems]=useState([]);
+  const [newItem,setNewItem]=useState("");
+  const [checked,setChecked]=useState({});
   const toggle=k=>setChecked(c=>({...c,[k]:!c[k]}));
-  const add=()=>{if(newItem.trim()){setMyItems(m=>[...m,newItem.trim()]);setNewItem("");}};
+  const addToCat=catName=>{
+    const val=(catInputs[catName]||"").trim();
+    if(!val) return;
+    setCatExtras(prev=>({...prev,[catName]:[...(prev[catName]||[]),val]}));
+    setCatInputs(prev=>({...prev,[catName]:""}));
+  };
+  const addMy=()=>{if(newItem.trim()){setMyItems(m=>[...m,newItem.trim()]);setNewItem("");}};
   const icons={"Documents":"📄","Santé":"💊","Vêtements":"👕","Technologie":"🔌","Divers":"📦"};
-  return (
+
+  return(
     <div>
       {(packing||[]).map((cat,ci)=>(
-        <div key={ci} style={{background:"#fff",border:"1.5px solid "+COLORS.parch,borderRadius:8,padding:"16px 18px",marginBottom:14}}>
+        <div key={ci} style={{background:"#fff",border:"1.5px solid "+C.parch,borderRadius:8,padding:"16px 18px",marginBottom:14}}>
           <div style={{fontFamily:"'Playfair Display',serif",fontSize:15,fontWeight:700,marginBottom:12}}>{icons[cat.category]||"📦"} {cat.category}</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:10}}>
             {(cat.items||[]).map((item,ii)=>{const k=`c${ci}-${ii}`;return(
               <label key={ii} style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",padding:"4px 0"}}>
-                <input type="checkbox" checked={!!checked[k]} onChange={()=>toggle(k)} style={{width:16,height:16,accentColor:COLORS.gold,cursor:"pointer",flexShrink:0}}/>
+                <input type="checkbox" checked={!!checked[k]} onChange={()=>toggle(k)} style={{width:16,height:16,accentColor:C.gold,flexShrink:0}}/>
+                <span style={{fontSize:13,color:checked[k]?"#aaa":"#3a3830",textDecoration:checked[k]?"line-through":"none"}}>{item}</span>
+              </label>
+            );})}
+            {(catExtras[cat.category]||[]).map((item,ei)=>{const k=`ce${ci}-${ei}`;return(
+              <label key={`e${ei}`} style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",padding:"4px 0"}}>
+                <input type="checkbox" checked={!!checked[k]} onChange={()=>toggle(k)} style={{width:16,height:16,accentColor:C.gold,flexShrink:0}}/>
                 <span style={{fontSize:13,color:checked[k]?"#aaa":"#3a3830",textDecoration:checked[k]?"line-through":"none"}}>{item}</span>
               </label>
             );})}
           </div>
+          {/* Per-category add */}
+          <div style={{display:"flex",gap:6}}>
+            <input value={catInputs[cat.category]||""} onChange={e=>setCatInputs(prev=>({...prev,[cat.category]:e.target.value}))}
+              onKeyDown={e=>e.key==="Enter"&&addToCat(cat.category)}
+              placeholder={`Ajouter dans ${cat.category}…`}
+              style={{flex:1,padding:"6px 10px",border:"1.5px solid "+C.parch,borderRadius:4,background:C.cream,fontFamily:"'DM Sans',sans-serif",fontSize:12,outline:"none"}}/>
+            <button onClick={()=>addToCat(cat.category)} style={{padding:"6px 12px",background:C.parch,color:C.ink,border:"none",borderRadius:4,cursor:"pointer",fontSize:14,fontWeight:700}}>+</button>
+          </div>
         </div>
       ))}
-      <div style={{background:"#fff",border:"1.5px solid "+COLORS.gold,borderRadius:8,padding:"16px 18px"}}>
-        <div style={{fontFamily:"'Playfair Display',serif",fontSize:15,fontWeight:700,marginBottom:12,color:COLORS.gold}}>🧳 Mes affaires personnelles</div>
+      {/* Personal items */}
+      <div style={{background:"#fff",border:"1.5px solid "+C.gold,borderRadius:8,padding:"16px 18px"}}>
+        <div style={{fontFamily:"'Playfair Display',serif",fontSize:15,fontWeight:700,marginBottom:12,color:C.gold}}>🧳 Mes affaires personnelles</div>
         {myItems.length>0&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:12}}>
           {myItems.map((item,i)=>{const k=`my-${i}`;return(
             <label key={i} style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",padding:"4px 0"}}>
-              <input type="checkbox" checked={!!checked[k]} onChange={()=>toggle(k)} style={{width:16,height:16,accentColor:COLORS.gold,cursor:"pointer",flexShrink:0}}/>
+              <input type="checkbox" checked={!!checked[k]} onChange={()=>toggle(k)} style={{width:16,height:16,accentColor:C.gold,flexShrink:0}}/>
               <span style={{fontSize:13,color:checked[k]?"#aaa":"#3a3830",textDecoration:checked[k]?"line-through":"none"}}>{item}</span>
             </label>
           );})}
         </div>}
         <div style={{display:"flex",gap:8}}>
-          <input value={newItem} onChange={e=>setNewItem(e.target.value)} onKeyDown={e=>e.key==="Enter"&&add()} placeholder="Coussins, fromages, café, couteaux…" style={{flex:1,padding:"8px 12px",border:"1.5px solid "+COLORS.parch,borderRadius:4,background:COLORS.cream,fontFamily:"'DM Sans',sans-serif",fontSize:13,outline:"none"}}/>
-          <button onClick={add} style={{padding:"8px 16px",background:COLORS.gold,color:"#fff",border:"none",borderRadius:4,cursor:"pointer",fontSize:16,fontWeight:700}}>+</button>
+          <input value={newItem} onChange={e=>setNewItem(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addMy()}
+            placeholder="Coussins, fromages, café, couteaux, plaid…"
+            style={{flex:1,padding:"8px 12px",border:"1.5px solid "+C.parch,borderRadius:4,background:C.cream,fontFamily:"'DM Sans',sans-serif",fontSize:13,outline:"none"}}/>
+          <button onClick={addMy} style={{padding:"8px 16px",background:C.gold,color:"#fff",border:"none",borderRadius:4,cursor:"pointer",fontSize:16,fontWeight:700}}>+</button>
         </div>
       </div>
     </div>
   );
 }
 
-// ─── File Upload Component ─────────────────────────────────
-function FileUpload({file, onFile, onClear}) {
-  const ref = useRef();
-  const [drag, setDrag] = useState(false);
-
-  const handleFile = (f) => {
-    if (!f) return;
-    const allowed = ['image/jpeg','image/png','image/webp','image/gif','application/pdf','text/plain'];
-    if (!allowed.includes(f.type)) { alert("Format non supporté. Utilise JPG, PNG, PDF ou TXT."); return; }
-    if (f.size > 5 * 1024 * 1024) { alert("Fichier trop grand (max 5 Mo)."); return; }
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const base64 = e.target.result.split(',')[1];
-      onFile({ name: f.name, type: f.type, data: base64, preview: f.type.startsWith('image/') ? e.target.result : null });
-    };
-    reader.readAsDataURL(f);
+// ─── File Upload ────────────────────────────────────────────
+function FileUpload({file,onFile,onClear}){
+  const ref=useRef();const [drag,setDrag]=useState(false);
+  const process=f=>{
+    if(!f) return;
+    const ok=['image/jpeg','image/png','image/webp','image/gif','application/pdf','text/plain'];
+    if(!ok.includes(f.type)){alert("Format non supporté. JPG, PNG, PDF ou TXT.");return;}
+    if(f.size>15*1024*1024){alert("Fichier trop grand (max 15 Mo).");return;}
+    if(f.type.startsWith('image/')){
+      const img=new Image();const url=URL.createObjectURL(f);
+      img.onload=()=>{
+        const canvas=document.createElement('canvas');const MAX=1200;
+        let w=img.width,h=img.height;
+        if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
+        canvas.width=w;canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        const comp=canvas.toDataURL('image/jpeg',0.85);
+        onFile({name:f.name,type:'image/jpeg',data:comp.split(',')[1],preview:comp});
+        URL.revokeObjectURL(url);
+      };img.src=url;
+    }else{
+      const r=new FileReader();
+      r.onload=e=>onFile({name:f.name,type:f.type,data:e.target.result.split(',')[1],preview:null});
+      r.readAsDataURL(f);
+    }
   };
-
-  return (
-    <div style={{marginBottom:28,paddingBottom:28,borderBottom:"1px solid "+COLORS.parch}}>
-      <div style={{fontFamily:"'Playfair Display',serif",fontSize:16,fontWeight:700,marginBottom:8}}>📎 Partage tes notes ou idées à Sofia</div>
-      <div style={{fontSize:13,color:COLORS.mist,marginBottom:12}}>Photo d'un carnet, d'un article, d'une liste, d'un email… Sofia lit tout et crée ton voyage.</div>
-
-      {!file ? (
-        <div
-          onClick={()=>ref.current.click()}
-          onDragOver={e=>{e.preventDefault();setDrag(true)}}
-          onDragLeave={()=>setDrag(false)}
-          onDrop={e=>{e.preventDefault();setDrag(false);handleFile(e.dataTransfer.files[0]);}}
-          style={{border:`2px dashed ${drag?COLORS.gold:COLORS.parch}`,borderRadius:8,padding:"28px 20px",textAlign:"center",cursor:"pointer",background:drag?"#FDF8ED":COLORS.cream,transition:"all .2s"}}>
-          <div style={{fontSize:36,marginBottom:8}}>📸</div>
-          <div style={{fontFamily:"'DM Mono',monospace",fontSize:10,letterSpacing:2,textTransform:"uppercase",color:COLORS.gold,marginBottom:4}}>Glisse un fichier ici ou clique</div>
-          <div style={{fontSize:12,color:COLORS.mist}}>JPG, PNG, PDF, TXT — max 5 Mo</div>
-          <input ref={ref} type="file" accept="image/*,.pdf,.txt" style={{display:"none"}} onChange={e=>handleFile(e.target.files[0])}/>
+  return(
+    <div style={{marginBottom:28,paddingBottom:28,borderBottom:"1px solid "+C.parch}}>
+      <div style={{fontFamily:"'Playfair Display',serif",fontSize:16,fontWeight:700,marginBottom:6}}>📎 Partage tes notes ou idées à Sofia</div>
+      <div style={{fontSize:13,color:C.mist,marginBottom:12}}>Photo d'un carnet, d'un article, d'une liste… Sofia lit tout et crée ton voyage.</div>
+      {!file?(
+        <div onClick={()=>ref.current.click()} onDragOver={e=>{e.preventDefault();setDrag(true)}} onDragLeave={()=>setDrag(false)} onDrop={e=>{e.preventDefault();setDrag(false);process(e.dataTransfer.files[0]);}}
+          style={{border:`2px dashed ${drag?C.gold:C.parch}`,borderRadius:8,padding:"24px 20px",textAlign:"center",cursor:"pointer",background:drag?"#FDF8ED":C.cream}}>
+          <div style={{fontSize:32,marginBottom:6}}>📸</div>
+          <div style={{fontFamily:"'DM Mono',monospace",fontSize:10,letterSpacing:2,textTransform:"uppercase",color:C.gold,marginBottom:4}}>Glisse ou clique pour importer</div>
+          <div style={{fontSize:12,color:C.mist}}>JPG, PNG, PDF, TXT — max 15 Mo</div>
+          <input ref={ref} type="file" accept="image/*,.pdf,.txt" style={{display:"none"}} onChange={e=>process(e.target.files[0])}/>
         </div>
-      ) : (
-        <div style={{border:"1.5px solid "+COLORS.gold,borderRadius:8,padding:"14px 16px",background:"#FDF8ED",display:"flex",gap:12,alignItems:"center"}}>
-          {file.preview
-            ? <img src={file.preview} alt="preview" style={{width:60,height:60,objectFit:"cover",borderRadius:4,flexShrink:0}}/>
-            : <div style={{width:60,height:60,background:COLORS.parch,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,flexShrink:0}}>📄</div>
-          }
+      ):(
+        <div style={{border:"1.5px solid "+C.gold,borderRadius:8,padding:"14px 16px",background:"#FDF8ED",display:"flex",gap:12,alignItems:"center"}}>
+          {file.preview?<img src={file.preview} alt="preview" style={{width:56,height:56,objectFit:"cover",borderRadius:4,flexShrink:0}}/>
+            :<div style={{width:56,height:56,background:C.parch,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0}}>📄</div>}
           <div style={{flex:1,minWidth:0}}>
-            <div style={{fontFamily:"'DM Mono',monospace",fontSize:10,letterSpacing:2,textTransform:"uppercase",color:COLORS.gold,marginBottom:3}}>✅ Fichier chargé</div>
-            <div style={{fontSize:13,color:COLORS.ink,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{file.name}</div>
-            <div style={{fontSize:11,color:COLORS.mist,marginTop:2}}>Sofia va analyser ce document</div>
+            <div style={{fontFamily:"'DM Mono',monospace",fontSize:10,letterSpacing:2,color:C.gold,marginBottom:3}}>✅ FICHIER CHARGÉ</div>
+            <div style={{fontSize:13,color:C.ink,fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{file.name}</div>
           </div>
           <button onClick={onClear} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:"#aaa",flexShrink:0}}>×</button>
         </div>
       )}
-
-      {file && (
-        <div style={{marginTop:10,padding:"10px 14px",background:"#e3f2fd",border:"1px solid #1565c0",borderRadius:6,fontSize:12,color:"#1565c0"}}>
-          ℹ️ <strong>Tu peux remplir le formulaire ci-dessous</strong> pour affiner, ou laisser Sofia déduire tout depuis ton document.
-        </div>
-      )}
+      {file&&<div style={{marginTop:10,padding:"8px 14px",background:"#e3f2fd",border:"1px solid #1565c0",borderRadius:6,fontSize:12,color:"#1565c0"}}>ℹ️ <strong>Remplis le formulaire ci-dessous</strong> pour affiner, ou laisse Sofia tout déduire depuis ton document.</div>}
     </div>
   );
 }
 
-// ─── Main ──────────────────────────────────────────────────
-export default function SofiaPlanner() {
+// ─── Main Component ─────────────────────────────────────────
+export default function SofiaPlanner(){
   const [phase,setPhase]=useState("form");
   const [plan,setPlan]=useState(null);
   const [errors,setErrors]=useState({});
@@ -330,15 +388,11 @@ export default function SofiaPlanner() {
 
   const [form,setForm]=useState({
     destination:"",depart:"",dateStart:"",dateEnd:"",nuits:7,
-    voyageurs:"",voyageurs_autre:"",
-    budget:"",budget_global:"",
-    styles:[],style_autre:"",
-    hebergement:"",hebergement_autre:"",
-    transport:"",transport_autre:"",
-    transport_to:[],transport_to_autre:"",
+    voyageurs:"",voyageurs_autre:"",budget:"",budget_global:"",
+    styles:[],style_autre:"",hebergement:"",hebergement_autre:"",
+    transport:"",transport_autre:"",transport_to:[],transport_to_autre:"",
     special:"",musts:"",avoid:"",notes:""
   });
-
   const setF=(k,v)=>setForm(f=>({...f,[k]:v}));
   const toggleArr=(k,v)=>setF(k,form[k].includes(v)?form[k].filter(x=>x!==v):[...form[k],v]);
 
@@ -355,20 +409,17 @@ export default function SofiaPlanner() {
 
   const validate=()=>{
     const e={};
-    // If file uploaded, destination is optional
-    if(!uploadedFile && !form.destination.trim()) e.destination="Destination obligatoire";
-    if(!uploadedFile && !form.budget) e.budget="Budget obligatoire";
-    if(!uploadedFile && !form.hebergement) e.hebergement="Hébergement obligatoire";
-    // dateEnd is now computed automatically from dateStart + nuits
+    if(!uploadedFile&&!form.destination.trim()) e.destination="Destination obligatoire";
+    if(!uploadedFile&&!form.budget) e.budget="Budget obligatoire";
+    if(!uploadedFile&&!form.hebergement) e.hebergement="Hébergement obligatoire";
+    if(form.dateStart&&form.dateEnd&&new Date(form.dateEnd)<=new Date(form.dateStart)) e.dateEnd="La date de retour doit être après le départ";
     setErrors(e);
-    if(Object.keys(e).length>0){
-      document.getElementById("field-"+Object.keys(e)[0])?.scrollIntoView({behavior:"smooth",block:"center"});
-    }
+    if(Object.keys(e).length>0) document.getElementById("field-"+Object.keys(e)[0])?.scrollIntoView({behavior:"smooth",block:"center"});
     return Object.keys(e).length===0;
   };
 
   const generate=async()=>{
-    if(!validate())return;
+    if(!validate()) return;
     setPhase("loading");setOverloaded(false);
     try{
       const body={formData:form.destination||form.budget?form:null};
@@ -376,19 +427,16 @@ export default function SofiaPlanner() {
       const res=await fetch("/api/plan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
       const data=await res.json();
       if(res.status===529||data.error==="OVERLOADED"){setPhase("form");setOverloaded(true);return;}
-      if(!res.ok)throw new Error(data.error||"Erreur");
+      if(!res.ok) throw new Error(data.error||"Erreur");
       if(data.type==="plan"){
         const p={...data.data,destination:form.destination||data.data.destination||"Voyage"};
         setPlan(p);setMsgs([{role:"assistant",content:data.data.intro||"Votre plan est prêt !"}]);setPhase("result");
-      }else{
-        setPhase("form");
-        setOverloaded(true);
-      }
-    }catch(err){alert("Erreur : "+err.message);setPhase("form");}
+      }else{setPhase("form");setOverloaded(true);}
+    }catch(err){setPhase("form");setOverloaded(true);}
   };
 
   const sendChat=async()=>{
-    if(!chatIn.trim()||chatLoad)return;
+    if(!chatIn.trim()||chatLoad) return;
     const userMsg={role:"user",content:chatIn.trim()};
     const newMsgs=[...msgs,userMsg];
     setMsgs(newMsgs);setChatIn("");setChatLoad(true);
@@ -396,8 +444,8 @@ export default function SofiaPlanner() {
       const res=await fetch("/api/plan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages:newMsgs.map(m=>({role:m.role,content:m.content})),currentPlan:plan})});
       const data=await res.json();
       if(data.type==="plan"&&data.data?.days){
-        const p={...data.data,destination:form.destination||plan?.destination||"Voyage"};
-        setPlan(p);setMsgs([...newMsgs,{role:"assistant",content:"✅ Plan mis à jour ! Consulte les onglets pour voir les changements. — Sofia 🌍"}]);
+        setPlan({...data.data,destination:plan?.destination||form.destination||"Voyage"});
+        setMsgs([...newMsgs,{role:"assistant",content:"✅ Plan mis à jour ! Consulte les onglets pour voir les changements. — Sofia 🌍"}]);
       }else if(data.type==="chat"&&data.reply){
         setMsgs([...newMsgs,{role:"assistant",content:data.reply}]);
       }else{
@@ -407,79 +455,85 @@ export default function SofiaPlanner() {
     setChatLoad(false);
   };
 
+  const destDisplay=plan?.destination||form.destination||"";
+
+  // Transport placeholder dynamique
+  const transportPlaceholder=(()=>{
+    const dest=form.destination||"la destination";
+    const dep=form.depart||"Luxembourg";
+    if((form.transport_to||[]).includes("⛴️ Ferry")) return `ex: ferry depuis ${dep.includes("uxembourg")||dep.includes("aris")?"Nice ou Toulon":dep} vers ${dest}`;
+    if((form.transport_to||[]).includes("✈️ Avion")) return `ex: vol depuis ${dep}, escale éventuelle`;
+    if((form.transport_to||[]).includes("🚄 Train")) return `ex: départ gare de ${dep}, correspondances`;
+    if((form.transport_to||[]).includes("🚗 Ma voiture")) return `ex: itinéraire autoroute depuis ${dep}, durée estimée`;
+    return "Précise les détails de ton trajet…";
+  })();
+
   const openPDF=()=>{
     const win=window.open("","_blank");
-    const dest=plan?.destination||form.destination;
+    const dest=destDisplay;
     const rows=(arr,fn)=>(arr||[]).map(fn).join("");
-    const dayH=rows(plan?.days,d=>`<div style="page-break-inside:avoid;margin-bottom:24px;border:1px solid #ddd;border-radius:8px;overflow:hidden"><img src="https://source.unsplash.com/800x200/?${encodeURIComponent((d.location||dest)+" tourism")}" style="width:100%;height:160px;object-fit:cover;display:block" onerror="this.style.display='none'"/><div style="background:#1C1A14;color:#B8972E;padding:12px 16px;font-family:Georgia,serif;font-size:15px;font-weight:700">Jour ${d.num} — ${d.title||""}${d.location?` <span style='font-size:11px;color:#aaa'>📍 ${d.location.split(',')[0]}</span>`:""}</div><div style="padding:14px;font-size:12px;line-height:1.7;color:#333">${d.morning?`<p style="margin-bottom:8px"><b>🌅 Matin :</b> ${d.morning}</p>`:""}${d.afternoon?`<p style="margin-bottom:8px"><b>☀️ Après-midi :</b> ${d.afternoon}</p>`:""}${d.evening?`<p style="margin-bottom:8px"><b>🌙 Soir :</b> ${d.evening}</p>`:""}${d.tip?`<p style="color:#8A9E93;font-style:italic;margin-top:8px">💡 ${d.tip}</p>`:""}</div></div>`);
+    const heroQ=enc(dest+" city tourism");
+    const dayH=rows(plan?.days,d=>`<div style="page-break-inside:avoid;margin-bottom:24px;border:1px solid #ddd;border-radius:8px;overflow:hidden"><img src="https://api.unsplash.com/photos/random?query=${enc((d.unsplash_query||d.location||dest)+" paysage")}&orientation=landscape&client_id=${UNSPLASH_KEY}" style="width:100%;height:160px;object-fit:cover;display:block" onerror="this.style.display='none'"/><div style="background:#1C1A14;color:#B8972E;padding:12px 16px;font-family:Georgia,serif;font-size:15px;font-weight:700">Jour ${d.num} — ${d.title||""}${d.location?` <span style='font-size:11px;color:#aaa'>📍 ${d.location}</span>`:""}</div><div style="padding:14px;font-size:12px;line-height:1.7;color:#333">${d.morning?`<p style="margin-bottom:6px"><b>🌅 Matin :</b> ${d.morning}</p>`:""}${d.afternoon?`<p style="margin-bottom:6px"><b>☀️ Après-midi :</b> ${d.afternoon}</p>`:""}${d.evening?`<p style="margin-bottom:6px"><b>🌙 Soir :</b> ${d.evening}</p>`:""}${d.tip?`<p style="color:#8A9E93;font-style:italic;margin-top:8px">💡 ${d.tip}</p>`:""}</div></div>`);
     const siteH=rows(plan?.remarkable_sites,s=>`<div style="margin-bottom:10px;padding:10px;border:1px solid #ddd;border-radius:4px"><b>${s.name}</b>${s.label?` [${s.label}]`:""}<br><small style="color:#B8972E">📍 ${s.location||""}</small><br>${s.description||""}</div>`);
-    const hotelH=rows(plan?.accommodations,h=>`<div style="margin-bottom:10px;padding:10px;border:1px solid #ddd;border-radius:4px"><b>${h.name}</b> — ${h.type||""} — 📍 ${h.location||""} — 💰 ${h.price||""}<br><i>${h.why||""}</i></div>`);
+    const hotelH=rows(plan?.accommodations,h=>`<div style="margin-bottom:10px;padding:10px;border:1px solid #ddd;border-radius:4px"><b>${h.name}</b> — ${h.type||""} — 📍 ${h.location||""} — 💰 ${h.price||""}<br><i>${h.why||""}</i>${h.website?`<br><a href="${h.website}">${h.website}</a>`:""}</div>`);
     const restoH=rows(plan?.restaurants,r=>`<div style="margin-bottom:10px;padding:10px;border:1px solid #ddd;border-radius:4px"><b>${r.name}</b> — ${r.cuisine||""} — 💰 ${r.price||""}<br>📍 ${r.address||""}<br>⭐ ${r.specialty||""}</div>`);
-    const hikeH=rows(plan?.hikes,h=>`<div style="margin-bottom:10px;padding:10px;border:1px solid #ddd;border-radius:4px"><b>${h.name}</b> — 📏${h.distance||""} — ⏱️${h.duration||""} — 🎯${h.difficulty||""}<br>🚩 ${h.start_point||""} — 🚌 ${h.transport_from_center||""}<br>${h.highlights||""}</div>`);
-    const actH=rows(plan?.activities,a=>`<div style="margin-bottom:10px;padding:10px;border:1px solid #ddd;border-radius:4px"><b>${a.name}</b> — ⏱️${a.duration||""} — 💰${a.price||""}<br>📍${a.address||""}<br><i>${a.info||""}</i></div>`);
-    const agendaH=rows(plan?.agenda,ev=>`<div style="margin-bottom:8px;padding:8px;border-left:3px solid ${ev.type==="positive"?"#2e7d32":ev.type==="negative"?"#c62828":"#1565c0"};background:${ev.type==="positive"?"#e8f5e9":ev.type==="negative"?"#fce4ec":"#e3f2fd"}"><b>${ev.type==="positive"?"🎉":ev.type==="negative"?"⚠️":"ℹ️"} ${ev.name}</b>${ev.date?` — ${ev.date}`:""}<br>${ev.description||""}</div>`);
+    const outingH=rows(plan?.outings,o=>`<div style="margin-bottom:10px;padding:10px;border:1px solid #ddd;border-radius:4px"><b>${o.type==="randonnée"?"🥾":"🎯"} ${o.name}</b> — ${o.subtype||""} — ⏱️${o.duration||""}${o.distance?" — 📏"+o.distance:""}<br>🚩 ${o.start_point||""}<br>${o.highlights||""}</div>`);
+    const agendaH=rows(plan?.agenda,ev=>`<div style="margin-bottom:8px;padding:8px;border-left:3px solid ${ev.type==="positive"?"#2e7d32":ev.type==="negative"?"#c62828":"#1565c0"};background:${ev.type==="positive"?"#e8f5e9":ev.type==="negative"?"#fce4ec":"#e3f2fd"}"><b>${ev.type==="positive"?"🎉":ev.type==="negative"?"⚠️":"ℹ️"} ${ev.name}</b>${ev.date?" — "+ev.date:""}<br>${ev.description||""}</div>`);
     const tipsH=(plan?.tips||[]).map((t,i)=>`<p style="margin-bottom:6px"><b>${i+1}.</b> ${t}</p>`).join("");
     const b=plan?.budget||{};
-    const budH=`<table style="width:100%;font-size:12px">${[["🏨",b.accommodation],["🍽️",b.meals],["🎯",b.activities],["🚗",b.transport]].map(([l,v])=>v?`<tr><td>${l} ${l==="🏨"?"Hébergement":l==="🍽️"?"Repas":l==="🎯"?"Activités":"Transport"}</td><td style="text-align:right;font-weight:600">${v}</td></tr>`:"").join("")}<tr style="font-weight:700;color:#C1440E"><td>TOTAL ESTIMÉ</td><td style="text-align:right">${b.total||"—"}</td></tr></table>`;
+    const budH=`<table style="width:100%;font-size:12px">${[["🏨 Hébergement",b.accommodation],["🍽️ Repas",b.meals],["🎯 Activités",b.activities],["🚗 Transport",b.transport]].map(([l,v])=>v?`<tr><td>${l}</td><td style="text-align:right;font-weight:600">${v}</td></tr>`:"").join("")}<tr style="font-weight:700;color:#C1440E"><td>TOTAL ESTIMÉ</td><td style="text-align:right">${b.total||"—"}</td></tr></table>`;
     const sec=(t,h)=>h?`<div style="page-break-before:always;padding:20px 0"><h2 style="font-family:Georgia,serif;color:#1C1A14;border-bottom:2px solid #B8972E;padding-bottom:8px;margin-bottom:16px">${t}</h2>${h}</div>`:"";
-    const mapUrl=buildMapUrl(plan,dest);
-    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Sofia — ${dest}</title><style>body{font-family:Arial,sans-serif;margin:24px;color:#333}img{max-width:100%}@media print{body{margin:0;padding:20px}.no-print{display:none}}</style></head><body>
-<div style="position:relative;background:#1C1A14;color:#fff;border-radius:8px;margin-bottom:24px;overflow:hidden;min-height:120px">
-  <img src="https://source.unsplash.com/1200x300/?${encodeURIComponent(dest+' city tourism')}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;opacity:0.35" onerror="this.style.display='none'"/>
-  <div style="position:relative;z-index:1;padding:28px;text-align:center">
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Sofia — ${dest}</title><style>body{font-family:Arial,sans-serif;margin:24px;color:#333}img{max-width:100%}@media print{body{margin:0;padding:20px}.np{display:none}}</style></head><body>
+<div style="position:relative;background:#1C1A14;border-radius:8px;margin-bottom:24px;overflow:hidden;min-height:140px">
+  <img src="https://api.unsplash.com/photos/random?query=${heroQ}&orientation=landscape&client_id=${UNSPLASH_KEY}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;opacity:0.4" onerror="this.style.display='none'"/>
+  <div style="position:relative;z-index:1;padding:32px;text-align:center;color:#fff">
     <div style="font-size:10px;letter-spacing:4px;color:#B8972E">✦ ON THE ROAD AGAIN ✦</div>
-    <h1 style="font-family:Georgia,serif;font-size:30px;margin:8px 0">${dest}</h1>
+    <h1 style="font-family:Georgia,serif;font-size:32px;margin:8px 0">${dest}</h1>
     <div style="font-size:11px;color:#aaa">${form.nuits} NUITS${form.dateStart?" · "+form.dateStart+" → "+form.dateEnd:""}</div>
   </div>
 </div>
 ${plan?.intro?`<div style="background:#f0f7f4;border-left:4px solid #2C4A3E;padding:14px;margin-bottom:20px;font-style:italic;color:#2C4A3E">${plan.intro}</div>`:""}
-<div class="no-print" style="text-align:center;margin-bottom:20px"><a href="${mapUrl}" target="_blank" style="display:inline-block;padding:10px 20px;background:#4285F4;color:#fff;border-radius:4px;text-decoration:none">🗺️ Voir l'itinéraire sur Google Maps</a></div>
+${plan?.tourism_office?.website?`<div style="border:1.5px solid #B8972E;border-radius:6px;padding:12px 16px;margin-bottom:16px"><b>🏛️ ${plan.tourism_office.name||"Office de Tourisme"}</b>${plan.tourism_office.address?" — 📍 "+plan.tourism_office.address:""}<br><a href="${plan.tourism_office.website}" style="color:#B8972E">${plan.tourism_office.website}</a></div>`:""}
+<div class="np" style="text-align:center;margin-bottom:20px"><a href="${buildMapUrl(plan,dest)}" target="_blank" style="display:inline-block;padding:10px 20px;background:#4285F4;color:#fff;border-radius:4px;text-decoration:none">🗺️ Voir l'itinéraire sur Google Maps</a></div>
 <h2 style="font-family:Georgia,serif;border-bottom:2px solid #B8972E;padding-bottom:8px;margin-bottom:16px">🗺️ Itinéraire</h2>${dayH}
-${plan?.agenda?.length?sec("📅 Agenda & Événements",agendaH):""}
-${sec("🏛️ Sites Remarquables",siteH)}${sec("🏨 Hébergements",hotelH)}${sec("🍽️ Restaurants",restoH)}${sec("🥾 Randonnées",hikeH)}${sec("🎯 Activités",actH)}
-${plan?.tips?.length?sec("💡 Conseils",tipsH):""}${plan?.budget?sec("💰 Budget",budH):""}
+${plan?.agenda?.length?sec("📅 À noter pour ton séjour",agendaH):""}
+${sec("⭐ Incontournables",siteH)}${sec("🏨 Hébergements",hotelH)}${sec("🍽️ Restaurants",restoH)}${sec("🎯 Sorties & Activités",outingH)}
+${plan?.tips?.length?sec("💡 Conseils pratiques",tipsH):""}${plan?.budget?sec("💰 Budget estimé",budH):""}
 <div style="text-align:center;margin-top:32px;font-size:10px;color:#aaa;border-top:1px solid #eee;padding-top:16px">Sofia Planner · On The Road Again · ${new Date().toLocaleDateString("fr-FR")}${TP_MARKER?" · Liens partenaires":""}</div>
-<script>window.onload=()=>window.print();</script></body></html>`);
+<script>
+window.onload=function(){
+  var imgs=document.querySelectorAll('img');
+  var loaded=0;
+  if(!imgs.length){window.print();return;}
+  imgs.forEach(function(img){
+    if(img.complete){loaded++;if(loaded===imgs.length)window.print();}
+    else{img.onload=img.onerror=function(){loaded++;if(loaded===imgs.length)window.print();};}
+  });
+  setTimeout(function(){window.print();},4000);
+};
+</script>
+</body></html>`);
     win.document.close();
   };
 
-  const destForDisplay = plan?.destination||form.destination;
-  const seed = destForDisplay.toLowerCase().replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"");
-
-  const computedEndDate = form.dateStart ? (() => {
-    const end = new Date(form.dateStart);
-    end.setDate(end.getDate() + form.nuits);
-    return end.toLocaleDateString("fr-FR", {weekday:"long",day:"numeric",month:"long",year:"numeric"});
-  })() : null;
-
-  const transportPlaceholder = (() => {
-    const dest = form.destination || "la destination";
-    const dep = form.depart || "Luxembourg";
-    if ((form.transport_to||[]).includes("⛴️ Ferry") && form.destination) return "ex: ferry depuis Toulon ou Nice vers " + dest;
-    if ((form.transport_to||[]).includes("✈️ Avion")) return "ex: vol depuis " + dep + ", escale éventuelle";
-    if ((form.transport_to||[]).includes("🚄 Train")) return "ex: départ gare de " + dep + ", correspondances";
-    if ((form.transport_to||[]).includes("🚗 Ma voiture")) return "ex: itinéraire autoroute, durée et péages";
-    return "Précise les détails de ton trajet…";
-  })();
-
   const TABS=[
     {k:"days",l:"🗺️ Itinéraire",n:plan?.days?.length},
-    {k:"agenda",l:"📅 Agenda",n:plan?.agenda?.length},
-    {k:"sites",l:"🏛️ Sites",n:plan?.remarkable_sites?.length},
+    {k:"agenda",l:"📅 À noter",n:plan?.agenda?.length},
+    {k:"sites",l:"⭐ Incontournables",n:plan?.remarkable_sites?.length},
     {k:"hotels",l:"🏨 Hébergements",n:plan?.accommodations?.length},
     {k:"restos",l:"🍽️ Restaurants",n:plan?.restaurants?.length},
-    {k:"hikes",l:"🥾 Randonnées",n:plan?.hikes?.length},
-    {k:"acts",l:"🎯 Activités",n:plan?.activities?.length},
+    {k:"outings",l:"🎯 Sorties & Activités",n:plan?.outings?.length},
     {k:"tips",l:"💡 Conseils",n:plan?.tips?.length},
     {k:"budget",l:"💰 Budget",n:null},
     {k:"packing",l:"🧳 Ma Valise",n:null},
   ];
 
-  const inp={width:"100%",padding:"11px 14px",border:"1.5px solid "+COLORS.parch,borderRadius:4,background:COLORS.cream,fontFamily:"'DM Sans',sans-serif",fontSize:13,color:COLORS.ink,outline:"none",boxSizing:"border-box"};
-  const lbl={display:"block",fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:2,textTransform:"uppercase",color:COLORS.gold,marginBottom:7};
-  const secTitle=t=><div style={{fontFamily:"'Playfair Display',serif",fontSize:16,fontWeight:700,marginBottom:14}}>{t}</div>;
+  const inp={width:"100%",padding:"11px 14px",border:"none",background:"transparent",fontFamily:"'DM Sans',sans-serif",fontSize:13,color:C.ink,outline:"none",boxSizing:"border-box"};
+  const inpBox={border:"1.5px solid "+C.parch,borderRadius:6,background:C.cream,overflow:"hidden"};
+  const lbl={display:"block",fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:2,textTransform:"uppercase",color:C.gold,marginBottom:7};
+  const secT=t=><div style={{fontFamily:"'Playfair Display',serif",fontSize:16,fontWeight:700,marginBottom:14}}>{t}</div>;
 
-  return (
+  return(
     <>
       <Head><title>Sofia Planner · On The Road Again</title></Head>
       <style>{`
@@ -491,27 +545,30 @@ ${plan?.tips?.length?sec("💡 Conseils",tipsH):""}${plan?.budget?sec("💰 Budg
         @keyframes sp{to{transform:rotate(360deg)}}
         @keyframes fade{0%,100%{opacity:.3}50%{opacity:1}}
         @keyframes d{0%,80%,100%{opacity:.2}40%{opacity:1}}
+        .date-box{display:flex;align-items:stretch;border:1.5px solid #EDE0C4;border-radius:6px;background:#FAF6EE;overflow:hidden}
+        .date-box input[type=date]{flex:1;padding:4px 14px 10px;border:none;background:transparent;font-family:'DM Sans',sans-serif;font-size:13px;color:#1C1A14;outline:none;cursor:pointer;min-width:0}
+        .date-box input[type=date]:focus{background:#FDF8ED}
+        .date-sep{width:1px;background:#EDE0C4;flex-shrink:0}
         @media(max-width:768px){
           .result-layout{flex-direction:column!important;height:auto!important}
-          .chat-panel{width:100%!important;height:380px!important;border-left:none!important;border-top:1px solid #EDE0C4!important}
-          .form-grid-2{grid-template-columns:1fr!important}
-          .form-grid-4{grid-template-columns:1fr 1fr!important}
-          .header-btns button{font-size:7px!important;padding:6px 8px!important}
+          .chat-panel{width:100%!important;height:360px!important;border-left:none!important;border-top:1px solid #EDE0C4!important}
+          .fg2{grid-template-columns:1fr!important}
+          .fg4{grid-template-columns:1fr 1fr!important}
         }
-        @media print{.no-print{display:none!important}body{background:#fff!important}}
+        @media print{.np{display:none!important}body{background:#fff!important}}
       `}</style>
 
       {/* HEADER */}
-      <div className="no-print" style={{background:COLORS.ink,padding:"12px 16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:100,boxShadow:"0 2px 8px rgba(0,0,0,.4)"}}>
+      <div className="np" style={{background:C.ink,padding:"12px 16px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:100,boxShadow:"0 2px 8px rgba(0,0,0,.4)"}}>
         <div style={{width:36,height:36,borderRadius:"50%",background:"linear-gradient(135deg,#B8972E,#C1440E)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>🌍</div>
         <div style={{flex:1}}>
-          <div style={{fontFamily:"'Playfair Display',serif",fontSize:17,fontWeight:700,color:"#FAF6EE"}}>Sofia <em style={{color:COLORS.gold}}>Planner</em></div>
+          <div style={{fontFamily:"'Playfair Display',serif",fontSize:17,fontWeight:700,color:"#FAF6EE"}}>Sofia <em style={{color:C.gold}}>Planner</em></div>
           <div style={{fontFamily:"'DM Mono',monospace",fontSize:7,letterSpacing:2,color:"#555"}}>On The Road Again</div>
         </div>
         {phase==="result"&&(
-          <div className="header-btns" style={{display:"flex",gap:6,flexShrink:0}}>
-            <button onClick={openPDF} style={{padding:"8px 12px",background:COLORS.gold,color:"#fff",border:"none",borderRadius:4,fontFamily:"'DM Mono',monospace",fontSize:8,letterSpacing:1,textTransform:"uppercase",cursor:"pointer"}}>📄 PDF</button>
-            <button onClick={()=>setShowMap(m=>!m)} style={{padding:"8px 12px",background:showMap?COLORS.rust:"transparent",color:showMap?"#fff":"#888",border:"1px solid #333",borderRadius:4,fontFamily:"'DM Mono',monospace",fontSize:8,letterSpacing:1,textTransform:"uppercase",cursor:"pointer"}}>🗺️ Carte</button>
+          <div style={{display:"flex",gap:6,flexShrink:0}}>
+            <button onClick={openPDF} style={{padding:"8px 12px",background:C.gold,color:"#fff",border:"none",borderRadius:4,fontFamily:"'DM Mono',monospace",fontSize:8,letterSpacing:1,textTransform:"uppercase",cursor:"pointer"}}>📄 PDF</button>
+            <button onClick={()=>setShowMap(m=>!m)} style={{padding:"8px 12px",background:showMap?C.rust:"transparent",color:showMap?"#fff":"#888",border:"1px solid #333",borderRadius:4,fontFamily:"'DM Mono',monospace",fontSize:8,cursor:"pointer"}}>🗺️ Carte</button>
             <button onClick={()=>{setPhase("form");setPlan(null);setMsgs([]);}} style={{padding:"8px 12px",background:"transparent",color:"#666",border:"1px solid #333",borderRadius:4,fontFamily:"'DM Mono',monospace",fontSize:8,cursor:"pointer"}}>← Nouveau</button>
           </div>
         )}
@@ -522,176 +579,149 @@ ${plan?.tips?.length?sec("💡 Conseils",tipsH):""}${plan?.budget?sec("💰 Budg
         <div style={{maxWidth:760,margin:"0 auto",padding:"24px 16px 80px"}}>
           <div style={{textAlign:"center",marginBottom:28}}>
             <div style={{fontSize:44,marginBottom:10}}>🌍</div>
-            <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:"clamp(24px,5vw,44px)",fontWeight:900,lineHeight:1.1}}>Planifie tes <em style={{color:COLORS.rust}}>vacances parfaites</em></h1>
-            <p style={{color:COLORS.mist,fontSize:14,marginTop:10,maxWidth:480,margin:"10px auto 0"}}>Sofia crée ton plan complet avec itinéraire, sites, hébergements, restaurants, randonnées et valise</p>
+            <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:"clamp(24px,5vw,44px)",fontWeight:900,lineHeight:1.1}}>Planifie tes <em style={{color:C.rust}}>vacances parfaites</em></h1>
+            <p style={{color:C.mist,fontSize:14,marginTop:10,maxWidth:480,margin:"10px auto 0"}}>Sofia crée ton plan complet avec itinéraire, incontournables, hébergements, restaurants, sorties et valise</p>
           </div>
 
           {overloaded&&(
-            <div style={{background:"#fff3cd",border:"1.5px solid "+COLORS.gold,borderRadius:6,padding:"14px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10}}>
-              <span style={{fontSize:20}}>⏳</span>
-              <div style={{flex:1}}>
-                <div style={{fontFamily:"'DM Mono',monospace",fontSize:10,letterSpacing:2,color:COLORS.gold,marginBottom:2}}>Serveurs surchargés</div>
-                <div style={{fontSize:13,color:"#666"}}>Attends 1-2 minutes et réessaie.</div>
-              </div>
+            <div style={{background:"#fff3cd",border:"1.5px solid "+C.gold,borderRadius:6,padding:"14px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10}}>
+              <span style={{fontSize:20,flexShrink:0}}>⏳</span>
+              <div style={{flex:1}}><div style={{fontFamily:"'DM Mono',monospace",fontSize:10,letterSpacing:2,color:C.gold,marginBottom:2}}>Génération échouée</div><div style={{fontSize:13,color:"#666"}}>Les serveurs sont surchargés. Attends 1-2 minutes et réessaie.</div></div>
               <button onClick={()=>setOverloaded(false)} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#aaa"}}>×</button>
             </div>
           )}
 
-          <div style={{background:"#fff",border:"1.5px solid "+COLORS.parch,borderRadius:8,padding:"24px 20px",boxShadow:"5px 5px 0 "+COLORS.parch}}>
-
-            {/* FILE UPLOAD */}
+          <div style={{background:"#fff",border:"1.5px solid "+C.parch,borderRadius:8,padding:"24px 20px",boxShadow:"5px 5px 0 "+C.parch}}>
             <FileUpload file={uploadedFile} onFile={setUploadedFile} onClear={()=>setUploadedFile(null)}/>
 
-            {/* 1 - Destination & dates */}
-            <div style={{marginBottom:24,paddingBottom:24,borderBottom:"1px solid "+COLORS.parch}}>
-              {secTitle("📍 Destination & dates")}
-              <div className="form-grid-2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
+            {/* Destination & dates */}
+            <div style={{marginBottom:24,paddingBottom:24,borderBottom:"1px solid "+C.parch}}>
+              {secT("📍 Destination & dates")}
+              <div className="fg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
                 <div id="field-destination">
                   <span style={lbl}>Destination {!uploadedFile&&"*"}</span>
-                  <input style={{...inp,borderColor:errors.destination?"#C1440E":undefined}} value={form.destination} onChange={e=>setF("destination",e.target.value)} placeholder="Corse, Kyoto, Islande…"/>
-                  {errors.destination&&<div style={{fontSize:11,color:COLORS.rust,marginTop:4}}>⚠️ {errors.destination}</div>}
+                  <div style={{...inpBox,borderColor:errors.destination?"#C1440E":C.parch}}><input style={inp} value={form.destination} onChange={e=>setF("destination",e.target.value)} placeholder="Corse, Bruxelles, Kyoto…"/></div>
+                  {errors.destination&&<div style={{fontSize:11,color:C.rust,marginTop:4}}>⚠️ {errors.destination}</div>}
                 </div>
-                <div>
-                  <span style={lbl}>Ville de départ</span>
-                  <input style={inp} value={form.depart} onChange={e=>setF("depart",e.target.value)} placeholder="Luxembourg, Paris, Bruxelles…"/>
-                </div>
+                <div><span style={lbl}>Ville de départ</span><div style={inpBox}><input style={inp} value={form.depart} onChange={e=>setF("depart",e.target.value)} placeholder="Luxembourg, Paris, Bruxelles…"/></div></div>
               </div>
-              <div style={{background:COLORS.cream,border:"1px solid "+COLORS.parch,borderRadius:6,padding:"14px 16px"}}>
-                <span style={lbl}>Dates du séjour</span>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-                  <div>
-                    <div style={{fontSize:10,color:COLORS.mist,marginBottom:4,fontFamily:"'DM Mono',monospace",letterSpacing:1}}>📅 DATE DE DÉPART</div>
-                    <input type="date" style={inp} value={form.dateStart} onChange={e=>setF("dateStart",e.target.value)}/>
+              {/* Unified date range picker */}
+              <div>
+                <span style={lbl}>📅 Dates du séjour</span>
+                <div className="date-box" style={{borderColor:errors.dateEnd?"#C1440E":C.parch}}>
+                  <div style={{display:"flex",flexDirection:"column",flex:1}}>
+                    <span style={{fontFamily:"'DM Mono',monospace",fontSize:8,letterSpacing:2,color:C.mist,padding:"8px 14px 0"}}>DÉPART</span>
+                    <input type="date" value={form.dateStart} onChange={e=>handleDate("dateStart",e.target.value)}/>
                   </div>
-                  <div id="field-nuits">
-                    <div style={{fontSize:10,color:COLORS.mist,marginBottom:4,fontFamily:"'DM Mono',monospace",letterSpacing:1}}>🌙 NOMBRE DE NUITS</div>
-                    <div style={{display:"flex",alignItems:"center",gap:8}}>
-                      <button type="button" onClick={()=>setF("nuits",Math.max(1,form.nuits-1))} style={{width:36,height:40,border:"1.5px solid "+COLORS.parch,borderRadius:4,background:"#fff",fontSize:20,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
-                      <div style={{flex:1,textAlign:"center",fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:700,color:COLORS.gold}}>{form.nuits}</div>
-                      <button type="button" onClick={()=>setF("nuits",Math.min(90,form.nuits+1))} style={{width:36,height:40,border:"1.5px solid "+COLORS.parch,borderRadius:4,background:"#fff",fontSize:20,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
-                    </div>
+                  <div className="date-sep"/>
+                  <div style={{display:"flex",flexDirection:"column",flex:1}}>
+                    <span style={{fontFamily:"'DM Mono',monospace",fontSize:8,letterSpacing:2,color:C.mist,padding:"8px 14px 0"}}>RETOUR</span>
+                    <input type="date" value={form.dateEnd} onChange={e=>handleDate("dateEnd",e.target.value)} min={form.dateStart||undefined}/>
                   </div>
                 </div>
-                {computedEndDate && (
-                  <div style={{padding:"10px 14px",background:"#fff",border:"1.5px solid "+COLORS.gold,borderRadius:4,fontSize:13,color:COLORS.ink}}>
-                    🏠 Retour le <strong>{computedEndDate}</strong>
+                {errors.dateEnd&&<div style={{fontSize:11,color:C.rust,marginTop:4}}>⚠️ {errors.dateEnd}</div>}
+                {form.dateStart&&form.dateEnd&&!errors.dateEnd&&(
+                  <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:"#fff",border:"1.5px solid "+C.gold,borderRadius:4,marginTop:8}}>
+                    <span>🌙</span>
+                    <span style={{fontFamily:"'Playfair Display',serif",fontSize:16,fontWeight:700,color:C.gold}}>{form.nuits} nuits</span>
+                    <span style={{fontSize:12,color:C.mist}}>— du {new Date(form.dateStart).toLocaleDateString("fr-FR",{day:"numeric",month:"long"})} au {new Date(form.dateEnd).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})}</span>
+                  </div>
+                )}
+                {(!form.dateStart||!form.dateEnd)&&(
+                  <div id="field-nuits" style={{marginTop:10}}>
+                    <span style={{...lbl,color:C.mist}}>Ou combien de nuits si dates inconnues ?</span>
+                    <div style={{display:"flex",alignItems:"center",gap:10}}>
+                      <div style={{...inpBox,width:80}}><input type="number" min="1" max="90" style={{...inp,padding:"9px 10px",textAlign:"center"}} value={form.nuits} onChange={e=>setF("nuits",parseInt(e.target.value)||1)}/></div>
+                      <span style={{fontSize:13,color:C.mist}}>nuits</span>
+                    </div>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* 2 - Transport aller (multi-select) */}
-            <div style={{marginBottom:24,paddingBottom:24,borderBottom:"1px solid "+COLORS.parch}}>
-              {secTitle("✈️ Comment vous y rendre")}
-              <div style={{fontSize:12,color:COLORS.mist,marginBottom:10}}>Tu peux sélectionner <strong>plusieurs étapes</strong> — ex : Ma voiture + Ferry</div>
-              <div className="form-grid-4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:7,marginBottom:8}}>
-                {TRANSPORT_TO.map(t=>(
-                  <button key={t} onClick={()=>toggleArr("transport_to",t)}
-                    style={{...pillBtn(form.transport_to.includes(t),COLORS.navy),borderRadius:4,textAlign:"center",padding:"9px 6px",fontSize:11}}>
-                    {t}
-                  </button>
-                ))}
+            {/* Transport aller - multi-select */}
+            <div style={{marginBottom:24,paddingBottom:24,borderBottom:"1px solid "+C.parch}}>
+              {secT("✈️ Comment vous y rendre")}
+              <div style={{fontSize:12,color:C.mist,marginBottom:10}}>Plusieurs étapes possibles — ex : 🚗 + ⛴️ Ferry</div>
+              <div className="fg4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:7,marginBottom:8}}>
+                {TRANSPORT_TO.map(t=><button key={t} onClick={()=>toggleArr("transport_to",t)} style={{...pillBtn(form.transport_to.includes(t),C.navy),borderRadius:4,textAlign:"center",padding:"9px 6px",fontSize:11}}>{t}</button>)}
               </div>
-              {form.transport_to.length>0&&(
-                <div style={{padding:"8px 12px",background:"#e3f2fd",border:"1px solid "+COLORS.navy,borderRadius:4,marginBottom:8,fontSize:12,color:COLORS.navy}}>
-                  🛣️ Trajet : {form.transport_to.join(" → ")}
-                </div>
-              )}
-              <input style={inp} value={form.transport_to_autre} onChange={e=>setF("transport_to_autre",e.target.value)} placeholder={transportPlaceholder}/>
+              {form.transport_to.length>0&&<div style={{padding:"8px 12px",background:C.navy+"11",border:"1px solid "+C.navy,borderRadius:4,marginBottom:8,fontSize:12,color:C.navy,fontWeight:600}}>🛣️ {form.transport_to.join(" → ")}</div>}
+              <div style={inpBox}><input style={inp} value={form.transport_to_autre} onChange={e=>setF("transport_to_autre",e.target.value)} placeholder={transportPlaceholder}/></div>
             </div>
 
-            {/* 3 - Voyageurs & budget */}
-            <div style={{marginBottom:24,paddingBottom:24,borderBottom:"1px solid "+COLORS.parch}}>
-              {secTitle("👥 Voyageurs & budget")}
-              <div className="form-grid-2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+            {/* Voyageurs & budget */}
+            <div style={{marginBottom:24,paddingBottom:24,borderBottom:"1px solid "+C.parch}}>
+              {secT("👥 Voyageurs & budget")}
+              <div className="fg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
                 <div id="field-voyageurs">
                   <span style={lbl}>Voyageurs</span>
                   <div style={{display:"flex",flexDirection:"column",gap:5}}>
-                    {VOYAGEURS.map(v=>(
-                      <button key={v} onClick={()=>setF("voyageurs",v)} style={selBtn(form.voyageurs===v,"#3D5A3E")}>{v}</button>
-                    ))}
-                    {form.voyageurs==="Autre"
-                      ? <input autoFocus style={inp} value={form.voyageurs_autre} onChange={e=>setF("voyageurs_autre",e.target.value)} placeholder="Ex: 3 adultes + 2 enfants…"/>
-                      : <button onClick={()=>setF("voyageurs","Autre")} style={selBtn(false)}>✏️ Autre</button>
-                    }
+                    {VOYAGEURS.map(v=><button key={v} onClick={()=>setF("voyageurs",v)} style={selBtn(form.voyageurs===v,"#3D5A3E")}>{v}</button>)}
+                    {form.voyageurs==="Autre"?<div style={inpBox}><input autoFocus style={inp} value={form.voyageurs_autre} onChange={e=>setF("voyageurs_autre",e.target.value)} placeholder="Ex: 3 adultes + 2 enfants…"/></div>
+                    :<button onClick={()=>setF("voyageurs","Autre")} style={selBtn(false)}>✏️ Autre</button>}
                   </div>
                 </div>
                 <div id="field-budget">
                   <span style={lbl}>Budget {!uploadedFile&&"*"}</span>
                   <div style={{display:"flex",flexDirection:"column",gap:5}}>
-                    {BUDGETS.map(b=>(
-                      <button key={b} onClick={()=>setF("budget",b)} style={{...selBtn(form.budget===b,"#8B2500"),borderColor:form.budget===b?"#8B2500":errors.budget?"#C1440E":COLORS.parch}}>{b}</button>
-                    ))}
-                    {form.budget==="Budget global"
-                      ? <input autoFocus style={inp} value={form.budget_global} onChange={e=>setF("budget_global",e.target.value)} placeholder="Ex: 3000€ pour 2 personnes, 7 nuits…"/>
-                      : <button onClick={()=>setF("budget","Budget global")} style={{...selBtn(false),borderColor:errors.budget?"#C1440E":COLORS.parch}}>💵 Budget global à préciser</button>
-                    }
+                    {BUDGETS.map(b=><button key={b} onClick={()=>setF("budget",b)} style={{...selBtn(form.budget===b,"#8B2500"),borderColor:form.budget===b?"#8B2500":errors.budget?"#C1440E":C.parch}}>{b}</button>)}
+                    {form.budget==="Budget global"?<div style={inpBox}><input autoFocus style={inp} value={form.budget_global} onChange={e=>setF("budget_global",e.target.value)} placeholder="Ex: 3000€ pour 2 pers., 7 nuits…"/></div>
+                    :<button onClick={()=>setF("budget","Budget global")} style={{...selBtn(false),borderColor:errors.budget?"#C1440E":C.parch}}>💵 Budget global à préciser</button>}
                   </div>
-                  {errors.budget&&<div style={{fontSize:11,color:COLORS.rust,marginTop:4}}>⚠️ {errors.budget}</div>}
+                  {errors.budget&&<div style={{fontSize:11,color:C.rust,marginTop:4}}>⚠️ {errors.budget}</div>}
                 </div>
               </div>
             </div>
 
-            {/* 4 - Style & hébergement */}
-            <div style={{marginBottom:24,paddingBottom:24,borderBottom:"1px solid "+COLORS.parch}}>
-              {secTitle("🎯 Style & hébergement")}
+            {/* Style & hébergement */}
+            <div style={{marginBottom:24,paddingBottom:24,borderBottom:"1px solid "+C.parch}}>
+              {secT("🎯 Style & hébergement")}
               <div style={{marginBottom:14}}>
                 <span style={lbl}>Style de voyage (plusieurs choix)</span>
                 <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
-                  {STYLES_LIST.map(s=>(
-                    <button key={s} onClick={()=>toggleArr("styles",s)} style={pillBtn(form.styles.includes(s),"#4A3560")}>{s}</button>
-                  ))}
-                  {form.styles.includes("Autre")
-                    ? <input autoFocus style={{...inp,width:"auto",flex:1,minWidth:160}} value={form.style_autre} onChange={e=>setF("style_autre",e.target.value)} placeholder="Précise…"/>
-                    : <button onClick={()=>toggleArr("styles","Autre")} style={pillBtn(false)}>✏️ Autre</button>
-                  }
+                  {STYLES_LIST.map(s=><button key={s} onClick={()=>toggleArr("styles",s)} style={pillBtn(form.styles.includes(s),"#4A3560")}>{s}</button>)}
+                  {form.styles.includes("Autre")?<div style={{...inpBox,flex:1,minWidth:160}}><input autoFocus style={{...inp,padding:"7px 12px"}} value={form.style_autre} onChange={e=>setF("style_autre",e.target.value)} placeholder="Précise…"/></div>
+                  :<button onClick={()=>toggleArr("styles","Autre")} style={pillBtn(false)}>✏️ Autre</button>}
                 </div>
               </div>
-              <div className="form-grid-2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+              <div className="fg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
                 <div id="field-hebergement">
                   <span style={lbl}>Hébergement {!uploadedFile&&"*"}</span>
                   <div style={{display:"flex",flexDirection:"column",gap:5}}>
-                    {HEBERGEMENTS.map(h=>(
-                      <button key={h} onClick={()=>setF("hebergement",h)} style={{...selBtn(form.hebergement===h,COLORS.forest),borderColor:form.hebergement===h?COLORS.forest:errors.hebergement?"#C1440E":COLORS.parch}}>{h}</button>
-                    ))}
-                    {form.hebergement==="Autre"
-                      ? <input autoFocus style={inp} value={form.hebergement_autre} onChange={e=>setF("hebergement_autre",e.target.value)} placeholder="Précise…"/>
-                      : <button onClick={()=>setF("hebergement","Autre")} style={{...selBtn(false),borderColor:errors.hebergement?"#C1440E":COLORS.parch}}>✏️ Autre</button>
-                    }
+                    {HEBERGEMENTS.map(h=><button key={h} onClick={()=>setF("hebergement",h)} style={{...selBtn(form.hebergement===h,C.forest),borderColor:form.hebergement===h?C.forest:errors.hebergement?"#C1440E":C.parch}}>{h}</button>)}
+                    {form.hebergement==="Autre"?<div style={inpBox}><input autoFocus style={inp} value={form.hebergement_autre} onChange={e=>setF("hebergement_autre",e.target.value)} placeholder="Précise…"/></div>
+                    :<button onClick={()=>setF("hebergement","Autre")} style={{...selBtn(false),borderColor:errors.hebergement?"#C1440E":C.parch}}>✏️ Autre</button>}
                   </div>
-                  {errors.hebergement&&<div style={{fontSize:11,color:COLORS.rust,marginTop:4}}>⚠️ {errors.hebergement}</div>}
+                  {errors.hebergement&&<div style={{fontSize:11,color:C.rust,marginTop:4}}>⚠️ {errors.hebergement}</div>}
                 </div>
                 <div>
                   <span style={lbl}>Transport sur place</span>
                   <div style={{display:"flex",flexDirection:"column",gap:5}}>
-                    {TRANSPORTS_LOCAL.map(t=>(
-                      <button key={t} onClick={()=>setF("transport",t)} style={selBtn(form.transport===t,COLORS.navy)}>{t}</button>
-                    ))}
-                    {form.transport==="Autre"
-                      ? <input autoFocus style={inp} value={form.transport_autre} onChange={e=>setF("transport_autre",e.target.value)} placeholder="Précise…"/>
-                      : <button onClick={()=>setF("transport","Autre")} style={selBtn(false)}>✏️ Autre</button>
-                    }
+                    {TRANSPORTS_LOCAL.map(t=><button key={t} onClick={()=>setF("transport",t)} style={selBtn(form.transport===t,C.navy)}>{t}</button>)}
+                    {form.transport==="Autre"?<div style={inpBox}><input autoFocus style={inp} value={form.transport_autre} onChange={e=>setF("transport_autre",e.target.value)} placeholder="Précise…"/></div>
+                    :<button onClick={()=>setF("transport","Autre")} style={selBtn(false)}>✏️ Autre</button>}
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* 5 - Envies */}
+            {/* Envies */}
             <div style={{marginBottom:24}}>
-              {secTitle("✨ Tes envies & besoins")}
-              <div className="form-grid-2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                <div><span style={lbl}>Incontournables / Rêves</span><textarea style={{...inp,height:80,resize:"none"}} value={form.musts} onChange={e=>setF("musts",e.target.value)} placeholder="Voir les Calanques, manger du vrai brocciu, coucher de soleil sur Bonifacio…"/></div>
-                <div><span style={lbl}>À éviter</span><textarea style={{...inp,height:80,resize:"none"}} value={form.avoid} onChange={e=>setF("avoid",e.target.value)} placeholder="Pas de foules, pas de circuits organisés, éviter le nord de l'île…"/></div>
-                <div><span style={lbl}>Besoins spéciaux</span><textarea style={{...inp,height:70,resize:"none"}} value={form.special} onChange={e=>setF("special",e.target.value)} placeholder="Végétarien, allergie gluten, mobilité réduite, bébé, animal de compagnie…"/></div>
-                <div><span style={lbl}>Autres informations</span><textarea style={{...inp,height:70,resize:"none"}} value={form.notes} onChange={e=>setF("notes",e.target.value)} placeholder="Passionné de plongée, budget resto max 25€/pers, fan de street food…"/></div>
+              {secT("✨ Tes envies & besoins")}
+              <div className="fg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                <div><span style={lbl}>Incontournables / Rêves</span><div style={inpBox}><textarea style={{...inp,height:80,resize:"none",padding:"10px 14px"}} value={form.musts} onChange={e=>setF("musts",e.target.value)} placeholder="Calanques, Sentier du Douanier, plage Palombaggia…"/></div></div>
+                <div><span style={lbl}>À éviter</span><div style={inpBox}><textarea style={{...inp,height:80,resize:"none",padding:"10px 14px"}} value={form.avoid} onChange={e=>setF("avoid",e.target.value)} placeholder="Pas trop touristique, éviter la haute saison…"/></div></div>
+                <div><span style={lbl}>Besoins spéciaux</span><div style={inpBox}><textarea style={{...inp,height:70,resize:"none",padding:"10px 14px"}} value={form.special} onChange={e=>setF("special",e.target.value)} placeholder="Végétarien, allergie, mobilité réduite, bébé…"/></div></div>
+                <div><span style={lbl}>Autres informations</span><div style={inpBox}><textarea style={{...inp,height:70,resize:"none",padding:"10px 14px"}} value={form.notes} onChange={e=>setF("notes",e.target.value)} placeholder="Passionné de plongée, fan de gastronomie locale…"/></div></div>
               </div>
             </div>
 
-            <button onClick={generate} style={{width:"100%",padding:"16px",background:COLORS.rust,color:"#fff",border:"none",borderRadius:6,fontFamily:"'Playfair Display',serif",fontStyle:"italic",fontSize:19,cursor:"pointer"}}>
-              {uploadedFile ? "📎 Analyser mon document et créer mon plan →" : "Créer mon plan de vacances avec Sofia →"}
+            <button onClick={generate} style={{width:"100%",padding:"16px",background:C.rust,color:"#fff",border:"none",borderRadius:6,fontFamily:"'Playfair Display',serif",fontStyle:"italic",fontSize:19,cursor:"pointer"}}>
+              {uploadedFile?"📎 Analyser mes notes et créer mon plan →":"Créer mon plan de vacances avec Sofia →"}
             </button>
             <div style={{textAlign:"center",marginTop:8,fontFamily:"'DM Mono',monospace",fontSize:8,color:"#bbb",letterSpacing:1}}>
-              ⓘ {uploadedFile ? "Sofia analysera ton document et créera un plan complet" : "Destination, Budget et Hébergement sont nécessaires"}
+              ⓘ {uploadedFile?"Sofia analysera ton document pour créer un plan complet":"Destination, Budget et Hébergement sont nécessaires"}
             </div>
           </div>
         </div>
@@ -702,11 +732,11 @@ ${plan?.tips?.length?sec("💡 Conseils",tipsH):""}${plan?.budget?sec("💰 Budg
         <div style={{textAlign:"center",padding:"100px 24px"}}>
           <div style={{fontSize:52,display:"inline-block",animation:"sp 2s linear infinite"}}>🧭</div>
           <div style={{fontFamily:"'Playfair Display',serif",fontSize:24,fontStyle:"italic",marginTop:18}}>
-            {uploadedFile ? "Sofia analyse ton document…" : "Sofia prépare ton aventure…"}
+            {uploadedFile?"Sofia lit tes notes et prépare ton aventure…":"Sofia prépare ton aventure…"}
           </div>
           <div style={{display:"flex",justifyContent:"center",gap:12,marginTop:14,flexWrap:"wrap"}}>
-            {["🗺️ Itinéraire","📅 Agenda","🏛️ Sites","🏨 Hébergements","🍽️ Restos","🥾 Randos","🎯 Activités","🧳 Valise"].map((t,i)=>(
-              <span key={t} style={{fontFamily:"'DM Mono',monospace",fontSize:10,letterSpacing:2,color:COLORS.gold,animation:`fade 2s ${i*0.2}s infinite`}}>{t}</span>
+            {["🗺️ Itinéraire","📅 Agenda","⭐ Incontournables","🏨 Hébergements","🍽️ Restos","🎯 Sorties","🧳 Valise"].map((t,i)=>(
+              <span key={t} style={{fontFamily:"'DM Mono',monospace",fontSize:10,letterSpacing:2,color:C.gold,animation:`fade 2s ${i*0.2}s infinite`}}>{t}</span>
             ))}
           </div>
         </div>
@@ -718,48 +748,47 @@ ${plan?.tips?.length?sec("💡 Conseils",tipsH):""}${plan?.budget?sec("💰 Budg
           <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",minWidth:0}}>
 
             {/* Hero */}
-            <div style={{position:"relative",height:200,overflow:"hidden",background:COLORS.ink,flexShrink:0}}>
-              <img src={`https://source.unsplash.com/1200x500/?${enc(destForDisplay)},city,tourism`} alt={destForDisplay}
-                style={{width:"100%",height:"100%",objectFit:"cover",opacity:.55}}
-                onError={e=>{e.target.src=`https://picsum.photos/seed/${seed}/1200/500`;}}/>
+            <div style={{position:"relative",height:200,overflow:"hidden",background:C.ink,flexShrink:0}}>
+              {destDisplay&&<img
+                src={usePhoto(`${destDisplay} ville paysage panoramique`)||`https://picsum.photos/seed/${enc2(destDisplay)}/1200/500`}
+                alt={destDisplay} style={{width:"100%",height:"100%",objectFit:"cover",opacity:.55}}/>}
               <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:24}}>
-                <div style={{fontFamily:"'DM Mono',monospace",fontSize:8,letterSpacing:4,color:COLORS.gold,marginBottom:8}}>✦ On The Road Again ✦</div>
-                <div style={{fontFamily:"'Playfair Display',serif",fontSize:"clamp(20px,4vw,40px)",fontWeight:900,color:"#fff",textShadow:"0 2px 8px rgba(0,0,0,.6)"}}>{destForDisplay}</div>
+                <div style={{fontFamily:"'DM Mono',monospace",fontSize:8,letterSpacing:4,color:C.gold,marginBottom:8}}>✦ On The Road Again ✦</div>
+                <div style={{fontFamily:"'Playfair Display',serif",fontSize:"clamp(20px,4vw,40px)",fontWeight:900,color:"#fff",textShadow:"0 2px 8px rgba(0,0,0,.6)"}}>{destDisplay}</div>
                 <div style={{fontFamily:"'DM Mono',monospace",fontSize:8,letterSpacing:3,color:"#EDE0C4",marginTop:10}}>
                   {form.nuits} NUITS{form.voyageurs?` · ${(form.voyageurs==="Autre"?form.voyageurs_autre:form.voyageurs).toUpperCase()}`:""}
                 </div>
-                {form.dateStart&&computedEndDate&&<div style={{fontFamily:"'DM Mono',monospace",fontSize:8,color:"rgba(255,255,255,.5)",marginTop:4}}>{form.dateStart} → {computedEndDate}</div>}
+                {form.dateStart&&<div style={{fontFamily:"'DM Mono',monospace",fontSize:8,color:"rgba(255,255,255,.5)",marginTop:4}}>{form.dateStart} → {form.dateEnd}</div>}
               </div>
             </div>
 
             {/* Map */}
             {showMap&&(
-              <div style={{flexShrink:0,borderBottom:"1px solid "+COLORS.parch}}>
-                <div style={{background:COLORS.ink,padding:"8px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                  <span style={{fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:2,color:COLORS.gold}}>🗺️ {destForDisplay}</span>
-                  <a href={buildMapUrl(plan,destForDisplay)} target="_blank" rel="noopener noreferrer"
+              <div style={{flexShrink:0,borderBottom:"1px solid "+C.parch}}>
+                <div style={{background:C.ink,padding:"8px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <span style={{fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:2,color:C.gold}}>🗺️ {destDisplay}</span>
+                  <a href={buildMapUrl(plan,destDisplay)} target="_blank" rel="noopener noreferrer"
                     style={{padding:"4px 10px",background:"#4285F4",color:"#fff",borderRadius:3,fontFamily:"'DM Mono',monospace",fontSize:8}}>
                     Ouvrir dans Maps ↗
                   </a>
                 </div>
-                <iframe src={`https://maps.google.com/maps?q=${enc(destForDisplay)}&output=embed&z=12`} width="100%" height="260" style={{border:"none",display:"block"}} loading="lazy" title="Carte"/>
+                <iframe src={`https://maps.google.com/maps?q=${enc(destDisplay)}&output=embed&z=12`} width="100%" height="260" style={{border:"none",display:"block"}} loading="lazy" title="Carte"/>
               </div>
             )}
 
-            {/* Intro */}
             {plan.intro&&(
-              <div style={{padding:"14px 18px",background:"#f0f7f4",borderBottom:"1px solid "+COLORS.parch,display:"flex",gap:10,flexShrink:0}}>
+              <div style={{padding:"14px 18px",background:"#f0f7f4",borderBottom:"1px solid "+C.parch,display:"flex",gap:10,flexShrink:0}}>
                 <div style={{width:28,height:28,borderRadius:"50%",background:"linear-gradient(135deg,#B8972E,#C1440E)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0}}>🌍</div>
-                <div style={{fontSize:13,lineHeight:1.65,color:COLORS.forest,fontStyle:"italic"}}>{plan.intro}</div>
+                <div style={{fontSize:13,lineHeight:1.65,color:C.forest,fontStyle:"italic"}}>{plan.intro}</div>
               </div>
             )}
 
             {/* Tabs */}
-            <div style={{display:"flex",overflowX:"auto",borderBottom:"1px solid "+COLORS.parch,background:"#fff",flexShrink:0}}>
+            <div style={{display:"flex",overflowX:"auto",borderBottom:"1px solid "+C.parch,background:"#fff",flexShrink:0}}>
               {TABS.map(t=>(
                 <button key={t.k} onClick={()=>setTab(t.k)}
-                  style={{padding:"10px 10px",border:"none",borderBottom:`2px solid ${tab===t.k?COLORS.rust:"transparent"}`,background:"transparent",fontFamily:"'DM Mono',monospace",fontSize:8,letterSpacing:1,textTransform:"uppercase",cursor:"pointer",color:tab===t.k?COLORS.rust:"#888",whiteSpace:"nowrap",flexShrink:0,display:"flex",gap:4,alignItems:"center"}}>
-                  {t.l}{t.n>0&&<span style={{background:COLORS.parch,color:"#888",borderRadius:10,padding:"1px 5px",fontSize:8}}>{t.n}</span>}
+                  style={{padding:"10px 10px",border:"none",borderBottom:`2px solid ${tab===t.k?C.rust:"transparent"}`,background:"transparent",fontFamily:"'DM Mono',monospace",fontSize:8,letterSpacing:1,textTransform:"uppercase",cursor:"pointer",color:tab===t.k?C.rust:"#888",whiteSpace:"nowrap",flexShrink:0,display:"flex",gap:4,alignItems:"center"}}>
+                  {t.l}{t.n>0&&<span style={{background:C.parch,color:"#888",borderRadius:10,padding:"1px 5px",fontSize:8}}>{t.n}</span>}
                 </button>
               ))}
             </div>
@@ -767,50 +796,60 @@ ${plan?.tips?.length?sec("💡 Conseils",tipsH):""}${plan?.budget?sec("💰 Budg
             {/* Tab content */}
             <div style={{flex:1,overflowY:"auto",padding:"16px"}}>
               <div style={{maxWidth:720,margin:"0 auto"}}>
-                {tab==="days"  &&(plan.days||[]).map((d,i)=><DayCard key={i} d={d} form={{...form,destination:destForDisplay}}/>)}
+                {tab==="days"&&(plan.days||[]).map((d,i)=><DayCard key={i} d={d} form={{...form,destination:destDisplay}} plan={plan} setTab={setTab}/>)}
                 {tab==="agenda"&&<AgendaSection agenda={plan.agenda}/>}
-                {tab==="sites" &&(<>
+                {tab==="sites"&&(<>
                   {plan.tourism_office?.website&&(
-                    <div style={{background:"#fff",border:"1.5px solid #B8972E",borderRadius:8,padding:"16px 18px",marginBottom:16,display:"flex",gap:12,alignItems:"center"}}>
+                    <div style={{background:"#fff",border:"1.5px solid "+C.gold,borderRadius:8,padding:"16px 18px",marginBottom:16,display:"flex",gap:12,alignItems:"center"}}>
                       <div style={{fontSize:28,flexShrink:0}}>🏛️</div>
                       <div style={{flex:1}}>
                         <div style={{fontFamily:"'Playfair Display',serif",fontSize:15,fontWeight:700,marginBottom:4}}>Office de Tourisme officiel</div>
                         <div style={{fontSize:13,color:"#4a4640",marginBottom:6}}>{plan.tourism_office.name}</div>
-                        {plan.tourism_office.address&&<div style={{fontSize:12,color:"#8A9E93",marginBottom:4}}>📍 {plan.tourism_office.address}</div>}
-                        {plan.tourism_office.phone&&<div style={{fontSize:12,color:"#8A9E93",marginBottom:6}}>📞 {plan.tourism_office.phone}</div>}
-                        <a href={plan.tourism_office.website} target="_blank" rel="noopener noreferrer" style={{display:"inline-block",padding:"7px 14px",background:"#B8972E",color:"#fff",borderRadius:4,fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:1}}>🌐 Site officiel</a>
+                        {plan.tourism_office.address&&<div style={{fontSize:12,color:C.mist,marginBottom:4}}>📍 {plan.tourism_office.address}</div>}
+                        {plan.tourism_office.phone&&<div style={{fontSize:12,color:C.mist,marginBottom:6}}>📞 {plan.tourism_office.phone}</div>}
+                        <a href={plan.tourism_office.website} target="_blank" rel="noopener noreferrer" style={{display:"inline-block",padding:"7px 14px",background:C.gold,color:"#fff",borderRadius:4,fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:1}}>🌐 Site officiel</a>
                       </div>
                     </div>
                   )}
-                  <LinkBar type="remarkable_sites" dest={destForDisplay} dateStart={form.dateStart} dateEnd={form.dateEnd} voyageurs={form.voyageurs} voyageurs_autre={form.voyageurs_autre}/><div style={{height:12}}/>{(plan.remarkable_sites||[]).map((s,i)=><ItemCard key={i} item={s} type="remarkable_sites" i={i} form={{...form,destination:destForDisplay}}/>)}
+                  <LinkBar type="remarkable_sites" dest={destDisplay} dateStart={form.dateStart} dateEnd={form.dateEnd} voy={form.voyageurs} voyA={form.voyageurs_autre}/>
+                  <div style={{height:12}}/>
+                  {(plan.remarkable_sites||[]).map((s,i)=><ItemCard key={i} item={s} type="remarkable_sites" i={i} form={{...form,destination:destDisplay}}/>)}
                 </>)}
-                {tab==="hotels"&&(plan.accommodations||[]).map((h,i)=><ItemCard key={i} item={h} type="accommodations" i={i} form={{...form,destination:destForDisplay}}/>)}
-                {tab==="restos"&&(plan.restaurants||[]).map((r,i)=><ItemCard key={i} item={r} type="restaurants" i={i} form={{...form,destination:destForDisplay}}/>)}
-                {tab==="hikes" &&(plan.hikes||[]).map((h,i)=><ItemCard key={i} item={h} type="hikes" i={i} form={{...form,destination:destForDisplay}}/>)}
-                {tab==="acts"  &&(plan.activities||[]).map((a,i)=><ItemCard key={i} item={a} type="activities" i={i} form={{...form,destination:destForDisplay}}/>)}
-                {tab==="tips"  &&(
-                  <div style={{background:"#fff",border:"1.5px solid "+COLORS.parch,borderRadius:8,padding:"20px 24px"}}>
+                {tab==="hotels"&&(plan.accommodations||[]).map((h,i)=><ItemCard key={i} item={h} type="accommodations" i={i} form={{...form,destination:destDisplay}}/>)}
+                {tab==="restos"&&(plan.restaurants||[]).map((r,i)=><ItemCard key={i} item={r} type="restaurants" i={i} form={{...form,destination:destDisplay}}/>)}
+                {tab==="outings"&&(
+                  <>
+                    <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+                      {["Tout","🥾 Randonnées","🎯 Activités"].map(f=>(
+                        <button key={f} style={{padding:"6px 14px",border:"1.5px solid "+C.parch,borderRadius:100,background:"#fff",fontFamily:"'DM Mono',monospace",fontSize:9,cursor:"pointer",color:C.ink}}>{f}</button>
+                      ))}
+                    </div>
+                    {(plan.outings||[]).map((o,i)=><OutingCard key={i} item={o} i={i} form={{...form,destination:destDisplay}}/>)}
+                  </>
+                )}
+                {tab==="tips"&&(
+                  <div style={{background:"#fff",border:"1.5px solid "+C.parch,borderRadius:8,padding:"20px 24px"}}>
                     <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700,marginBottom:16}}>💡 Conseils pratiques</div>
                     {(plan.tips||[]).map((t,i)=>(
-                      <div key={i} style={{display:"flex",gap:12,marginBottom:14,paddingBottom:14,borderBottom:i<(plan.tips||[]).length-1?"1px solid "+COLORS.parch:"none"}}>
-                        <div style={{width:26,height:26,borderRadius:"50%",background:COLORS.gold,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Mono',monospace",fontSize:11,fontWeight:700,flexShrink:0}}>{i+1}</div>
+                      <div key={i} style={{display:"flex",gap:12,marginBottom:14,paddingBottom:14,borderBottom:i<(plan.tips||[]).length-1?"1px solid "+C.parch:"none"}}>
+                        <div style={{width:26,height:26,borderRadius:"50%",background:C.gold,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Mono',monospace",fontSize:11,fontWeight:700,flexShrink:0}}>{i+1}</div>
                         <div style={{fontSize:13,lineHeight:1.7,color:"#4a4640"}}>{t}</div>
                       </div>
                     ))}
                   </div>
                 )}
                 {tab==="budget"&&plan.budget&&(
-                  <div style={{background:"#fff",border:"1.5px solid "+COLORS.parch,borderRadius:8,padding:"20px 24px"}}>
+                  <div style={{background:"#fff",border:"1.5px solid "+C.parch,borderRadius:8,padding:"20px 24px"}}>
                     <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700,marginBottom:16}}>💰 Budget estimé</div>
                     {[["🏨 Hébergement",plan.budget.accommodation],["🍽️ Repas",plan.budget.meals],["🎯 Activités",plan.budget.activities],["🚗 Transport",plan.budget.transport]].map(([l,v])=>v&&(
-                      <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"12px 0",borderBottom:"1px solid "+COLORS.parch}}>
+                      <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"12px 0",borderBottom:"1px solid "+C.parch}}>
                         <span style={{fontSize:14,color:"#4a4640"}}>{l}</span>
                         <span style={{fontFamily:"'DM Mono',monospace",fontSize:13,fontWeight:700}}>{v}</span>
                       </div>
                     ))}
                     <div style={{display:"flex",justifyContent:"space-between",padding:"16px 0 0"}}>
                       <span style={{fontFamily:"'Playfair Display',serif",fontSize:16,fontWeight:700}}>TOTAL ESTIMÉ</span>
-                      <span style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:900,color:COLORS.rust}}>{plan.budget.total}</span>
+                      <span style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:900,color:C.rust}}>{plan.budget.total}</span>
                     </div>
                     <NoteField id="budget-note"/>
                   </div>
@@ -819,18 +858,18 @@ ${plan?.tips?.length?sec("💡 Conseils",tipsH):""}${plan?.budget?sec("💰 Budg
               </div>
             </div>
 
-            <div style={{textAlign:"center",padding:10,borderTop:"1px solid "+COLORS.parch,fontFamily:"'DM Mono',monospace",fontSize:7,letterSpacing:2,color:"#aaa",flexShrink:0}}>
+            <div style={{textAlign:"center",padding:10,borderTop:"1px solid "+C.parch,fontFamily:"'DM Mono',monospace",fontSize:7,letterSpacing:2,color:"#aaa",flexShrink:0}}>
               Sofia Planner · On The Road Again{TP_MARKER?" · Liens partenaires":""}
             </div>
           </div>
 
           {/* CHAT */}
-          <div className="chat-panel" style={{width:320,display:"flex",flexDirection:"column",background:"#fff",borderLeft:"1px solid "+COLORS.parch,flexShrink:0}}>
-            <div style={{padding:"12px 14px",borderBottom:"1px solid "+COLORS.parch,background:COLORS.cream,flexShrink:0}}>
+          <div className="chat-panel" style={{width:320,display:"flex",flexDirection:"column",background:"#fff",borderLeft:"1px solid "+C.parch,flexShrink:0}}>
+            <div style={{padding:"12px 14px",borderBottom:"1px solid "+C.parch,background:C.cream,flexShrink:0}}>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
                 <div style={{width:28,height:28,borderRadius:"50%",background:"linear-gradient(135deg,#B8972E,#C1440E)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0}}>🌍</div>
                 <div>
-                  <div style={{fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:2,color:COLORS.gold}}>Chat avec Sofia</div>
+                  <div style={{fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:2,color:C.gold}}>Chat avec Sofia</div>
                   <div style={{fontSize:10,color:"#aaa",marginTop:1}}>Demande un changement → plan mis à jour</div>
                 </div>
               </div>
@@ -840,7 +879,7 @@ ${plan?.tips?.length?sec("💡 Conseils",tipsH):""}${plan?.budget?sec("💰 Budg
                 {msgs.map((m,i)=>(
                   <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
                     {m.role==="assistant"&&<div style={{width:24,height:24,borderRadius:"50%",background:"linear-gradient(135deg,#B8972E,#C1440E)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,marginRight:7,flexShrink:0,marginTop:2}}>🌍</div>}
-                    <div style={{maxWidth:"85%",padding:"9px 12px",borderRadius:m.role==="user"?"14px 14px 3px 14px":"14px 14px 14px 3px",background:m.role==="user"?COLORS.rust:COLORS.cream,color:m.role==="user"?"#fff":COLORS.ink,fontSize:12,lineHeight:1.6,border:m.role==="assistant"?"1px solid "+COLORS.parch:"none"}}>
+                    <div style={{maxWidth:"85%",padding:"9px 12px",borderRadius:m.role==="user"?"14px 14px 3px 14px":"14px 14px 14px 3px",background:m.role==="user"?C.rust:C.cream,color:m.role==="user"?"#fff":C.ink,fontSize:12,lineHeight:1.6,border:m.role==="assistant"?"1px solid "+C.parch:"none"}}>
                       {m.content.split("\n").map((l,j)=><span key={j}>{l}{j<m.content.split("\n").length-1&&<br/>}</span>)}
                     </div>
                   </div>
@@ -848,26 +887,26 @@ ${plan?.tips?.length?sec("💡 Conseils",tipsH):""}${plan?.budget?sec("💰 Budg
                 {chatLoad&&(
                   <div style={{display:"flex",alignItems:"center",gap:8}}>
                     <div style={{width:24,height:24,borderRadius:"50%",background:"linear-gradient(135deg,#B8972E,#C1440E)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11}}>🌍</div>
-                    <div style={{padding:"9px 14px",background:COLORS.cream,border:"1px solid "+COLORS.parch,borderRadius:"14px 14px 14px 3px"}}>
-                      {[0,1,2].map(i=><span key={i} style={{display:"inline-block",width:5,height:5,borderRadius:"50%",background:COLORS.gold,margin:"0 2px",animation:`d 1.2s ${i*0.2}s infinite`}}/>)}
+                    <div style={{padding:"9px 14px",background:C.cream,border:"1px solid "+C.parch,borderRadius:"14px 14px 14px 3px"}}>
+                      {[0,1,2].map(i=><span key={i} style={{display:"inline-block",width:5,height:5,borderRadius:"50%",background:C.gold,margin:"0 2px",animation:`d 1.2s ${i*0.2}s infinite`}}/>)}
                     </div>
                   </div>
                 )}
                 <div ref={bottomRef}/>
               </div>
             </div>
-            <div style={{borderTop:"1px solid "+COLORS.parch,padding:"10px 12px",flexShrink:0}}>
+            <div style={{borderTop:"1px solid "+C.parch,padding:"10px 12px",flexShrink:0}}>
               <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:8}}>
                 {["Ajoute une journée","Change le jour 2","Plus de randonnées","Hébergement moins cher","Version végétarienne","Optimise le budget"].map(s=>(
-                  <button key={s} onClick={()=>setChatIn(s)} style={{padding:"4px 8px",background:COLORS.cream,border:"1px solid "+COLORS.parch,borderRadius:12,fontFamily:"'DM Mono',monospace",fontSize:8,cursor:"pointer",color:"#888"}}>{s}</button>
+                  <button key={s} onClick={()=>setChatIn(s)} style={{padding:"4px 8px",background:C.cream,border:"1px solid "+C.parch,borderRadius:12,fontFamily:"'DM Mono',monospace",fontSize:8,cursor:"pointer",color:"#888"}}>{s}</button>
                 ))}
               </div>
               <div style={{display:"flex",gap:8}}>
                 <input value={chatIn} onChange={e=>setChatIn(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendChat()}
                   placeholder="Demande un changement à Sofia…" disabled={chatLoad}
-                  style={{flex:1,padding:"9px 13px",border:"1.5px solid "+COLORS.parch,borderRadius:20,background:COLORS.cream,fontFamily:"'DM Sans',sans-serif",fontSize:12,color:COLORS.ink,outline:"none"}}/>
+                  style={{flex:1,padding:"9px 13px",border:"1.5px solid "+C.parch,borderRadius:20,background:C.cream,fontFamily:"'DM Sans',sans-serif",fontSize:12,color:C.ink,outline:"none"}}/>
                 <button onClick={sendChat} disabled={!chatIn.trim()||chatLoad}
-                  style={{padding:"9px 14px",background:chatIn.trim()&&!chatLoad?COLORS.rust:"#ccc",color:"#fff",border:"none",borderRadius:20,cursor:chatIn.trim()&&!chatLoad?"pointer":"not-allowed",fontSize:15,flexShrink:0}}>➤</button>
+                  style={{padding:"9px 14px",background:chatIn.trim()&&!chatLoad?C.rust:"#ccc",color:"#fff",border:"none",borderRadius:20,cursor:chatIn.trim()&&!chatLoad?"pointer":"not-allowed",fontSize:15,flexShrink:0}}>➤</button>
               </div>
               <div style={{textAlign:"center",marginTop:6,fontFamily:"'DM Mono',monospace",fontSize:7,color:"#ccc",letterSpacing:2}}>SOFIA · ON THE ROAD AGAIN</div>
             </div>
