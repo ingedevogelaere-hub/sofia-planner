@@ -65,7 +65,7 @@ const T={
     wishes:"Tes envies & besoins",musts:"Incontournables / Rêves",mustsPH:"Calanques, plage Palombaggia…",
     avoid:"À éviter",avoidPH:"Pas trop touristique…",special:"Besoins spéciaux",specialPH:"Végétarien, allergie…",
     notes:"Autres informations",notesPH:"Passionné de plongée, fan de gastronomie…",
-    btn:uploadedFile?tr.btnFile:tr.btn,btnFile:tr.btnFile,
+    btn:"Créer mon plan de vacances avec Sofia →",btnFile:"📎 Analyser mes notes et créer mon plan →",
     hint:"Destination, Budget et Hébergement sont nécessaires",hintFile:"Sofia analysera ton document pour créer un plan complet",
     other:"✏️ Autre",stayHome:"🏠 Je dors chez moi",
     addCat:"Ajouter dans",myStuff:"🧳 Mes affaires personnelles",myStuffPH:"Coussins, fromages, café, couteaux…",
@@ -1187,10 +1187,10 @@ window.onload=function(){
             </div>
 
             <button onClick={generate} style={{width:"100%",padding:"16px",background:C.rust,color:"#fff",border:"none",borderRadius:6,fontFamily:"'Playfair Display',serif",fontStyle:"italic",fontSize:19,cursor:"pointer"}}>
-              {uploadedFile?tr.btnFile:uploadedFile?tr.btnFile:tr.btn}
+              {uploadedFile?tr.btnFile:tr.btn}
             </button>
             <div style={{textAlign:"center",marginTop:8,fontFamily:"'DM Mono',monospace",fontSize:8,color:"#bbb",letterSpacing:1}}>
-              ⓘ {uploadedFile?"Sofia analysera ton document pour créer un plan complet":"Destination, Budget et Hébergement sont nécessaires"}
+              ⓘ {uploadedFile?tr.hintFile:tr.hint}
             </div>
           </div>
         </div>
@@ -1370,7 +1370,7 @@ window.onload=function(){
               </div>
               <div style={{display:"flex",gap:8}}>
                 <input value={chatIn} onChange={e=>setChatIn(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendChat()}
-                  placeholder=tr.chatPH disabled={chatLoad}
+                  placeholder={tr.chatPH} disabled={chatLoad}
                   style={{flex:1,padding:"9px 13px",border:"1.5px solid "+C.parch,borderRadius:20,background:C.cream,fontFamily:"'DM Sans',sans-serif",fontSize:12,color:C.ink,outline:"none"}}/>
                 <button onClick={sendChat} disabled={!chatIn.trim()||chatLoad}
                   style={{padding:"9px 14px",background:chatIn.trim()&&!chatLoad?C.rust:"#ccc",color:"#fff",border:"none",borderRadius:20,cursor:chatIn.trim()&&!chatLoad?"pointer":"not-allowed",fontSize:15,flexShrink:0}}>➤</button>
