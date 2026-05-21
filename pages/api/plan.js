@@ -26,15 +26,13 @@ function extractJSON(text) {
 
 function planSummary(plan) {
   if (!plan) return '';
-  // Send a clean summary - not truncated JSON
   return JSON.stringify({
     destination: plan.destination,
     intro: plan.intro,
     days: plan.days,
     accommodations: (plan.accommodations||[]).map(h=>({name:h.name,type:h.type,location:h.location,price:h.price})),
     restaurants: (plan.restaurants||[]).map(r=>({name:r.name,cuisine:r.cuisine,address:r.address})),
-    hikes: (plan.hikes||[]).map(h=>({name:h.name,distance:h.distance,difficulty:h.difficulty})),
-    activities: (plan.activities||[]).map(a=>({name:a.name,duration:a.duration})),
+    outings: (plan.outings||[]).map(o=>({name:o.name,type:o.type,duration:o.duration})),
     remarkable_sites: (plan.remarkable_sites||[]).map(s=>({name:s.name,location:s.location})),
     budget: plan.budget,
     tips: plan.tips,
@@ -77,23 +75,54 @@ export default async function handler(req, res) {
   if (req.method!=="POST") return res.status(405).end();
   const { messages, formData, currentPlan, fileData, fileType } = req.body;
 
-  const FMT = `{"intro":"Message chaleureux","days":[{"num":1,"title":"Titre","location":"Nom du quartier ou lieu principal UNIQUEMENT (ex: Centre historique, Sablon, Montmartre)","morning":"Matin","afternoon":"Après-midi","evening":"Soirée + restaurant","tip":"Astuce"}],"remarkable_sites":[{"name":"Nom","label":"Label","location":"Adresse courte","description":"Desc","website":"URL officielle","coords":[lat,lon]}],"accommodations":[{"name":"Nom","type":"Type","location":"Adresse","price":"Prix/nuit","why":"Raison","website":"Site","coords":[lat,lon]}],"restaurants":[{"name":"Nom","cuisine":"Cuisine","specialty":"Plat","price":"€","tip":"Conseil","address":"Adresse","website":"Site","coords":[lat,lon]}],"hikes":[{"name":"Nom","distance":"Xkm","duration":"Xh","difficulty":"Facile/Moyen/Difficile","highlights":"Vue","start_point":"Départ","transport_from_center":"Accès","coords_start":[lat,lon]}],"activities":[{"name":"Nom","duration":"Durée","price":"Prix","info":"Info","address":"Adresse","website":"Site","coords":[lat,lon]}],"agenda":[{"type":"positive","name":"Événement","date":"Date","description":"Détails"},{"type":"negative","name":"Perturbation","date":"Date","description":"Impact"},{"type":"info","name":"Férié","date":"Date","description":"Impact"}],"tourism_office":{"name":"Nom office tourisme","website":"URL OFFICIELLE de l'office de tourisme (ex: visitbrussels.be)","address":"Adresse","phone":"Téléphone si connu"},"tips":["conseil1","conseil2","conseil3","conseil4","conseil5"],"budget":{"accommodation":"X€/nuit","meals":"X€/j","activities":"X€/j","transport":"X€/j","total":"Total"},"packing_essentials":[{"category":"Documents","items":["Passeport","Carte d'identité","Assurance"]},{"category":"Santé","items":["Crème solaire","Pharmacie"]},{"category":"Vêtements","items":["Adaptés météo","Chaussures marche"]},{"category":"Technologie","items":["Adaptateur","Chargeurs"]},{"category":"Divers","items":["Argent local","Carte bancaire"]}]}`;
+  const FMT = `{
+"intro":"Message chaleureux personnalisé",
+"days":[{"num":1,"title":"Titre évocateur","location":"NOM COURT uniquement — 1 à 3 mots reconnaissables par Google Maps (ex: Cap Corse, Piana, Porto-Vecchio, Bonifacio). JAMAIS de description longue.","morning":"Activités du matin avec lieux précis","afternoon":"Après-midi","evening":"Soirée et dîner avec nom du restaurant","tip":"Astuce locale"}],
+"remarkable_sites":[{"name":"Nom officiel","label":"UNESCO/Réserve/Parc National/Grand Site","location":"Adresse courte","description":"Ce qu'on y voit","website":"URL officielle si connue","coords":[lat,lon],"unsplash_query":"mots-clés précis pour trouver une photo (ex: Calanques de Piana Corse falaises rouges)"}],
+"accommodations":[{"name":"Nom exact de l'hôtel/gîte","type":"Type","location":"Adresse","price":"Prix/nuit","why":"Pourquoi ce choix","website":"Site officiel","coords":[lat,lon],"unsplash_query":"mots-clés photo (ex: hôtel Porto Vecchio Corse mer)"}],
+"restaurants":[{"name":"Nom exact","cuisine":"Type","specialty":"Plat signature","price":"€","tip":"Conseil","address":"Adresse complète","website":"Site si connu","coords":[lat,lon]}],
+"outings":[{"name":"Nom de l'activité ou randonnée","type":"randonnée|activité|excursion|sport","subtype":"description courte du type (ex: sentier côtier, plongée, kayak, visite guidée)","distance":"X km si randonnée","duration":"Durée","difficulty":"Facile/Moyen/Difficile si randonnée","highlights":"Ce qu'on voit/vit","start_point":"Point de départ précis","transport_from_center":"Comment y aller depuis le centre","price":"Prix si activité payante","address":"Adresse si lieu fixe","website":"Site ou lien réservation","coords":[lat,lon],"unsplash_query":"mots-clés photo précis (ex: randonnée Cap Corse sentier littoral)"}],
+"agenda":[{"type":"positive","name":"Événement","date":"Date exacte","description":"Détails pratiques"},{"type":"negative","name":"Perturbation","date":"Dates","description":"Impact sur le voyage"},{"type":"info","name":"Info pratique","date":"Période","description":"Ce qu'il faut savoir"}],
+"tourism_office":{"name":"Nom complet de l'office","website":"URL OFFICIELLE (ex: visit-corsica.com, corsica-isula.fr)","address":"Adresse","phone":"Téléphone"},
+"tips":["conseil1","conseil2","conseil3","conseil4","conseil5"],
+"budget":{"accommodation":"X€/nuit","meals":"X€/jour","activities":"X€/jour","transport":"X€/jour","total":"Total estimé"},
+"packing_essentials":[
+{"category":"Documents","items":["Passeport ou Carte d'identité","Assurance voyage","Réservations imprimées ou sur téléphone","Permis de conduire international si hors UE"]},
+{"category":"Santé","items":["Crème solaire SPF 50+","Crème après-soleil","Trousse pharmacie de base","Médicaments personnels","Répulsif anti-moustiques"]},
+{"category":"Vêtements","items":["Vêtements adaptés à la météo locale","Chaussures de randonnée confortables","Maillot de bain","Chapeau ou casquette","Pull léger pour les soirées","Imperméable léger"]},
+{"category":"Technologie","items":["Chargeur téléphone","Adaptateur électrique si nécessaire","Batterie externe","Appareil photo","Lunettes de soleil"]},
+{"category":"Divers","items":["Argent liquide local","Carte bancaire internationale","Sac à dos de jour","Gourde réutilisable","Guide ou carte locale"]}
+]}`;
 
-  const sysForm = `Tu es Sofia, conseillère de voyage pour "On The Road Again". Réponds TOUJOURS en français.
+  const sysForm = `Tu es Sofia, conseillère de voyage experte pour "On The Road Again". Réponds TOUJOURS en français.
 CRITICAL: Réponds UNIQUEMENT avec du JSON brut valide. PAS de texte. PAS de backticks. Commence par { et termine par }.
-IMPORTANT pour le champ "location" des jours: mettre UNIQUEMENT le nom du quartier ou lieu principal, PAS une liste de plusieurs endroits. Exemple correct: "Sablon", "Centre historique", "Montmartre". Exemple INCORRECT: "Sablon, Cathédrale, quartier Art Nouveau".
-Format JSON: ${FMT}
-Règles: noms RÉELS, adresses précises, coords GPS, agenda avec événements aux dates, incontournables inclus, hébergement précis EN PREMIER, office de tourisme avec vraie URL officielle.`;
 
-  const sysChat = `Tu es Sofia, conseillère de voyage pour "On The Road Again". Réponds TOUJOURS en français. Tu es chaleureuse et enthousiaste.
-${currentPlan ? `Voici le plan de voyage actuel pour ${currentPlan.destination||'la destination'}:
+RÈGLE CRITIQUE pour le champ "location" des jours d'itinéraire:
+→ Mettre UNIQUEMENT le nom géographique court (1-3 mots) que Google Maps peut trouver immédiatement.
+→ CORRECT: "Cap Corse", "Piana", "Porto-Vecchio", "Bonifacio", "Calvi", "Corte"
+→ INCORRECT: "Cap Corse, Croisière Promenades en Mer, villages", "Riana Porto, Voyage en Méditerranée"
+→ Jamais de descriptions, jamais de virgules multiples, jamais de mots comme "Voyage"
+
+RÈGLE pour le champ "unsplash_query": mettre des mots-clés précis et visuels pour trouver une belle photo pertinente.
+
+Format JSON: ${FMT}
+Règles additionnelles:
+- "outings" = fusion des randonnées ET activités en une seule liste (type: randonnée ou activité)
+- Génère le bon nombre de jours selon les nuits
+- Coordonnées GPS réelles
+- Agenda avec événements réels aux dates du voyage
+- Hébergement précis mentionné → EN PREMIER dans accommodations
+- Inclure les incontournables même si non demandés
+- Si image/document joint → extraire toutes les infos visibles`;
+
+  const sysChat = `Tu es Sofia, conseillère de voyage experte pour "On The Road Again". Réponds TOUJOURS en français. Tu es chaleureuse.
+${currentPlan ? `Plan actuel pour ${currentPlan.destination||'la destination'}:
 ${planSummary(currentPlan)}
 
-Si l'utilisateur demande de MODIFIER le plan (ajouter/supprimer une journée, changer activité, modifier hébergement, etc.):
+Si modification demandée (ajouter/supprimer jour, changer activité, modifier hébergement, etc.):
 → Réponds avec le JSON COMPLET mis à jour au même format, commence directement par {, sans aucun texte avant.
-
-Si l'utilisateur pose une QUESTION ou fait une conversation normale:
-→ Réponds en français naturel, sois utile et chaleureuse.` : 'Réponds en français naturel.'}
+Si question ou conversation normale:
+→ Réponds en français naturel et utile.` : 'Réponds en français naturel.'}
 Ne jamais afficher de JSON brut dans une réponse texte. Signe — Sofia 🌍`;
 
   try {
@@ -112,8 +141,8 @@ Ne jamais afficher de JSON brut dans une réponse texte. Signe — Sofia 🌍`;
         ? new Date(new Date(formData.dateStart).getTime()+formData.nuits*86400000).toISOString().split("T")[0]
         : "Flexibles";
       const prompt = (!hasForm&&fileData)
-        ? `Analyse cette image/photo. Extrais toutes les infos de voyage visibles. Complète avec tes recommandations. JSON brut seulement, commence par {`
-        : `Crée mon plan de vacances. JSON brut seulement, commence par {
+        ? `Analyse cette image/photo de notes de voyage. Extrais toutes les informations visibles (destination, dates, lieux, activités, hébergements souhaités). Complète avec tes meilleures recommandations pour les infos manquantes. Respecte strictement les règles du format JSON, notamment pour le champ location. JSON brut seulement, commence par {`
+        : `Crée mon plan de vacances complet. JSON brut seulement, commence par {
 Destination: ${formData.destination}
 Départ depuis: ${formData.depart||"Non précisé"}
 Transport aller: ${Array.isArray(formData.transport_to)?formData.transport_to.join("+"):formData.transport_to||"Non précisé"}${formData.transport_to_autre?" ("+formData.transport_to_autre+")":""}
@@ -124,9 +153,9 @@ Style: ${(formData.styles||[]).join(", ")||"Varié"}${formData.style_autre?", "+
 Hébergement: ${formData.hebergement==="Autre"?formData.hebergement_autre:formData.hebergement||"Non précisé"}
 Transport sur place: ${formData.transport==="Autre"?formData.transport_autre:formData.transport||"Non précisé"}
 Besoins: ${formData.special||"Aucun"}
-Incontournables: ${formData.musts||"Propose les incontournables"}
+Incontournables: ${formData.musts||"Propose les incontournables de la destination"}
 À éviter: ${formData.avoid||"Rien"}
-Notes: ${formData.notes||"Aucune"}${fileData?" + image jointe":""}`;
+Notes: ${formData.notes||"Aucune"}${fileData?" + document joint avec infos supplémentaires":""}`;
       content.push({type:"text",text:prompt});
       allMessages = [{role:"user",content}];
     } else {
@@ -139,10 +168,8 @@ Notes: ${formData.notes||"Aucune"}${fileData?" + image jointe":""}`;
     if (json && (json.days||json.intro||json.accommodations)) {
       res.status(200).json({type:"plan",data:json});
     } else if (isForm) {
-      // Form generation failed
       res.status(200).json({type:"error"});
     } else {
-      // Chat conversation - Sofia responded in natural language
       res.status(200).json({type:"chat",reply:text});
     }
   } catch(e) {
