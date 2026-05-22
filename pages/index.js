@@ -13,7 +13,7 @@ const C = {
 function selBtn(active,color=C.navy){return{padding:"9px 12px",border:"1.5px solid",borderRadius:6,textAlign:"left",width:"100%",background:active?color+"18":"transparent",borderColor:active?color:C.parch,color:active?color:"#666",fontFamily:"'DM Sans',sans-serif",fontSize:12,cursor:"pointer",fontWeight:active?600:400,transition:"all .15s"};}
 function pillBtn(active,color=C.navy){return{padding:"7px 13px",border:"1.5px solid",borderRadius:100,background:active?color+"18":"transparent",borderColor:active?color:C.parch,color:active?color:"#888",fontFamily:"'DM Sans',sans-serif",fontSize:12,cursor:"pointer",fontWeight:active?600:400,transition:"all .15s"};}
 
-const STYLES_LIST=["🏛️ Culture","🌿 Nature","🍷 Gastronomie","🏖️ Plages","⛰️ Montagne","🥾 Randonnées","🧗 Aventure","🎨 Art","📸 Photo","👨‍👩‍👧 Famille","🚴 Vélo","🏕️ Camping","🧘 Bien-être","🛍️ Shopping"];
+const STYLES_LIST=["⭐ Incontournables","🏛️ Culture","🏰 Centre historique","🌿 Nature","🍷 Gastronomie","🏖️ Plages","⛰️ Montagne","🥾 Randonnées","🧗 Aventure","🎨 Art","📸 Photo","👨‍👩‍👧 Famille","🚴 Vélo","🏕️ Camping","🧘 Bien-être","🛍️ Shopping"];
 const HEBERGEMENTS=["🏨 Hôtel","🏠 Airbnb / Location","⛺ Camping","🛏️ B&B / Chambre d'hôtes","💎 Hôtel de luxe","🏡 Gîte rural","🛖 Auberge de jeunesse"];
 const BUDGETS=["🌱 Économique (< 80€/j)","💼 Moyen (80-150€/j)","✨ Confort (150-250€/j)","💎 Luxe (250€+/j)"];
 const TRANSPORTS_LOCAL=["🚗 Voiture de location","🚌 Transports en commun","🚲 Vélo","🚶 À pied","🛵 Scooter","🚐 Van / Camping-car"];
@@ -109,14 +109,81 @@ function NoteField({id}){
   </div>);
 }
 
+// ─── City Autocomplete (Nominatim / OpenStreetMap) ──────────
+function CityInput({value, onChange, placeholder, style: styleProp}){
+  const [sugg, setSugg] = useState([]);
+  const [show, setShow] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const timerRef = useRef(null);
+
+  const search = async (q) => {
+    if (q.length < 2) { setSugg([]); setShow(false); return; }
+    setLoading(true);
+    try {
+      const r = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${enc(q)}&format=json&limit=6&addressdetails=1&featuretype=settlement`,
+        { headers: { 'Accept-Language': 'fr' } }
+      );
+      const data = await r.json();
+      const cities = data.map(d => {
+        const city = d.address?.city || d.address?.town || d.address?.village || d.address?.hamlet || d.name;
+        const country = d.address?.country || '';
+        return { city, country };
+      }).filter((c, i, arr) => c.city && arr.findIndex(x => x.city === c.city) === i);
+      setSugg(cities.slice(0, 5));
+      setShow(cities.length > 0);
+    } catch { setSugg([]); setShow(false); }
+    setLoading(false);
+  };
+
+  const handleChange = (v) => {
+    onChange(v);
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => search(v), 350);
+  };
+
+  const select = (city) => {
+    onChange(city);
+    setSugg([]);
+    setShow(false);
+  };
+
+  return (
+    <div style={{position:'relative'}}>
+      <div style={{...{border:'1.5px solid '+C.parch,borderRadius:6,background:C.cream,overflow:'visible'}, ...styleProp}}>
+        <input style={{width:'100%',padding:'11px 14px',border:'none',background:'transparent',fontFamily:"'DM Sans',sans-serif",fontSize:13,color:C.ink,outline:'none',boxSizing:'border-box'}}
+          value={value} onChange={e=>handleChange(e.target.value)} placeholder={placeholder}
+          onFocus={()=>value.length>=2&&search(value)} onBlur={()=>setTimeout(()=>setShow(false),200)}
+        />
+      </div>
+      {show && sugg.length > 0 && (
+        <div style={{position:'absolute',top:'calc(100% + 2px)',left:0,right:0,background:'#fff',border:'1.5px solid '+C.parch,borderRadius:'0 0 8px 8px',zIndex:999,boxShadow:'0 6px 20px rgba(0,0,0,.12)',overflow:'hidden'}}>
+          {sugg.map((s,i) => (
+            <div key={i} onClick={()=>select(s.city)}
+              style={{padding:'9px 14px',cursor:'pointer',borderBottom:i<sugg.length-1?'1px solid '+C.cream:'none',display:'flex',alignItems:'center',justifyContent:'space-between',transition:'background .1s'}}
+              onMouseEnter={e=>e.currentTarget.style.background=C.cream}
+              onMouseLeave={e=>e.currentTarget.style.background='#fff'}
+            >
+              <div>
+                <span style={{fontSize:13,fontWeight:500,color:C.ink}}>📍 {s.city}</span>
+              </div>
+              <span style={{fontSize:11,color:C.mist}}>{s.country}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Chip({label,bg=C.parch,color=C.ink}){
   return <span style={{display:"inline-block",padding:"3px 9px",borderRadius:100,background:bg,color,fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:1,textTransform:"uppercase",flexShrink:0}}>{label}</span>;
 }
 
 // ─── Day Card ────────────────────────────────────────────────
-function DayCard({d,form,plan,setTab}){
+function DayCard({d,form,plan,setTab,setOutingDayFilter}){
   const photoQ=d.unsplash_query||(d.location?`${d.location} ${form.destination}`:form.destination+" paysage voyage");
-  const dayMapsUrl=`https://www.google.com/maps/dir/?api=1&destination=${enc(d.location+", "+form.destination)}&travelmode=walking`;
+  const dayMapsUrl=`https://www.google.com/maps/search/${enc(d.location+", "+form.destination)}`;
   return(
     <div style={{background:"#fff",border:"1.5px solid "+C.parch,borderRadius:8,overflow:"hidden",marginBottom:20,boxShadow:"0 2px 8px rgba(0,0,0,.04)"}}>
       <Photo query={photoQ} h={160}/>
@@ -140,9 +207,9 @@ function DayCard({d,form,plan,setTab}){
           </div>
         ))}
         {d.tip&&<div style={{background:C.cream,border:"1px solid "+C.parch,borderRadius:4,padding:"8px 12px",fontSize:12,color:C.mist,fontStyle:"italic",marginBottom:10}}>💡 {d.tip}</div>}
-        {plan?.outings?.length>0&&(
-          <button onClick={()=>setTab("outings")} style={{background:"none",border:"1px solid "+C.forest,borderRadius:4,padding:"5px 10px",cursor:"pointer",fontFamily:"'DM Mono',monospace",fontSize:9,color:C.forest,letterSpacing:1,marginBottom:8}}>
-            🎯 Voir les sorties & activités
+        {plan?.outings?.filter(o=>o.day_num===d.num||!o.day_num).length>0&&(
+          <button onClick={()=>{setOutingDayFilter(d.num);setTab("outings");}} style={{background:C.forest+"11",border:"1px solid "+C.forest,borderRadius:4,padding:"5px 10px",cursor:"pointer",fontFamily:"'DM Mono',monospace",fontSize:9,color:C.forest,letterSpacing:1,marginBottom:8}}>
+            🎯 Sorties & activités du jour {d.num}
           </button>
         )}
         <NoteField id={`day-${d.num}`}/>
@@ -568,6 +635,7 @@ export default function SofiaPlanner(){
   const [chatLoad,setChatLoad]=useState(false);
   const [tab,setTab]=useState("days");
   const [overloaded,setOverloaded]=useState(false);
+  const [outingDayFilter,setOutingDayFilter]=useState(null);
   const [uploadedFile,setUploadedFile]=useState(null);
   const bottomRef=useRef(null);
   useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"});},[msgs]);
@@ -632,12 +700,13 @@ export default function SofiaPlanner(){
 
   const destDisplay=plan?.destination||fixDest(form.destination)||"";
   const transportPlaceholder=(()=>{
-    const dest=form.destination||"la destination";const dep=form.depart||"Luxembourg";
-    if((form.transport_to||[]).includes("⛴️ Ferry"))return`ex: ferry depuis ${dep.includes("uxembourg")||dep.includes("aris")?"Nice ou Toulon":dep} vers ${dest}`;
-    if((form.transport_to||[]).includes("✈️ Avion"))return`ex: vol depuis ${dep}, escale éventuelle`;
-    if((form.transport_to||[]).includes("🚄 Train"))return`ex: départ gare de ${dep}, correspondances`;
-    if((form.transport_to||[]).includes("🚗 Ma voiture"))return`ex: itinéraire autoroute depuis ${dep}, durée estimée`;
-    return "Précise les détails de ton trajet…";
+    const dep=form.depart&&form.depart.length>2?form.depart:"Luxembourg";
+    if((form.transport_to||[]).includes("⛴️ Ferry"))return"ex: ferry depuis Nice ou Marseille (port + horaire)";
+    if((form.transport_to||[]).includes("✈️ Avion"))return`ex: vol depuis ${dep}, heure de départ, escale ?`;
+    if((form.transport_to||[]).includes("🚄 Train"))return`ex: départ gare de ${dep}, connexions et durée`;
+    if((form.transport_to||[]).includes("🚗 Ma voiture")||form.transport_to?.includes("🚗 Voiture louée"))return"ex: durée estimée, autoroutes prévues, parking";
+    if((form.transport_to||[]).includes("🚌 Bus"))return"ex: compagnie, numéro de bus, durée";
+    return "Ajoute des détails utiles sur ton trajet…";
   })();
 
   const TABS=[
@@ -707,10 +776,10 @@ export default function SofiaPlanner(){
               <div className="fg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
                 <div id="field-destination">
                   <span style={lbl}>Destination {!uploadedFile&&"*"}</span>
-                  <div style={{...inpBox,borderColor:errors.destination?"#C1440E":C.parch}}><input style={inp} value={form.destination} onChange={e=>setF("destination",e.target.value)} placeholder="Corse, Bruxelles, Kyoto…"/></div>
+                  <CityInput value={form.destination} onChange={v=>setF("destination",v)} placeholder="Corse, Bruxelles, Kyoto…" style={{borderColor:errors.destination?"#C1440E":C.parch}}/>
                   {errors.destination&&<div style={{fontSize:11,color:C.rust,marginTop:4}}>⚠️ {errors.destination}</div>}
                 </div>
-                <div><span style={lbl}>Ville de départ</span><div style={inpBox}><input style={inp} value={form.depart} onChange={e=>setF("depart",e.target.value)} placeholder="Luxembourg, Paris, Bruxelles…"/></div></div>
+                <div><span style={lbl}>Ville de départ</span><CityInput value={form.depart} onChange={v=>setF("depart",v)} placeholder="Luxembourg, Paris, Bruxelles…"/></div>
               </div>
               <div><span style={lbl}>📅 Dates du séjour</span>
                 <DateRangePicker dateStart={form.dateStart} dateEnd={form.dateEnd} nuits={form.nuits} onDateStart={v=>handleDate("dateStart",v)} onDateEnd={v=>handleDate("dateEnd",v)} onNuits={v=>setF("nuits",v)}/>
@@ -749,7 +818,7 @@ export default function SofiaPlanner(){
             {/* Style & hébergement */}
             <div style={{marginBottom:24,paddingBottom:24,borderBottom:"1px solid "+C.parch}}>
               {secT("🎯 Style & hébergement")}
-              <div style={{marginBottom:14}}><span style={lbl}>Style de voyage (plusieurs choix)</span>
+              <div style={{marginBottom:14}}><span style={lbl}>Style de voyage <span style={{fontSize:8,fontWeight:400,color:C.mist,letterSpacing:1}}>— plusieurs choix possibles</span></span>
                 <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
                   {STYLES_LIST.map(s=><button key={s} onClick={()=>toggleArr("styles",s)} style={pillBtn(form.styles.includes(s),"#4A3560")}>{s}</button>)}
                   {form.styles.includes("Autre")?<div style={{...inpBox,flex:1,minWidth:160}}><input autoFocus style={{...inp,padding:"7px 12px"}} value={form.style_autre} onChange={e=>setF("style_autre",e.target.value)} placeholder="Précise…"/></div>:<button onClick={()=>toggleArr("styles","Autre")} style={pillBtn(false)}>✏️ Autre</button>}
@@ -811,7 +880,7 @@ export default function SofiaPlanner(){
         <div className="result-layout" style={{display:"flex",height:"calc(100vh - 60px)"}}>
           <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",minWidth:0}}>
             {/* Hero */}
-            <div style={{position:"relative",height:200,overflow:"hidden",background:C.ink,flexShrink:0}}>
+            <div style={{position:"relative",height:130,overflow:"hidden",background:C.ink,flexShrink:0}}>
               <HeroPhoto query={destDisplay?`${destDisplay} ville paysage panoramique`:"travel landscape"}/>
               <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:24}}>
                 <div style={{fontFamily:"'DM Mono',monospace",fontSize:8,letterSpacing:4,color:C.gold,marginBottom:8}}>✦ On The Road Again ✦</div>
@@ -829,7 +898,7 @@ export default function SofiaPlanner(){
             {/* Tabs */}
             <div style={{display:"flex",overflowX:"auto",borderBottom:"1px solid "+C.parch,background:"#fff",flexShrink:0}}>
               {TABS.map(t=>(
-                <button key={t.k} onClick={()=>setTab(t.k)} style={{padding:"10px 10px",border:"none",borderBottom:`2px solid ${tab===t.k?C.rust:"transparent"}`,background:"transparent",fontFamily:"'DM Mono',monospace",fontSize:8,letterSpacing:1,textTransform:"uppercase",cursor:"pointer",color:tab===t.k?C.rust:"#888",whiteSpace:"nowrap",flexShrink:0,display:"flex",gap:4,alignItems:"center"}}>
+                <button key={t.k} onClick={()=>{setTab(t.k);if(t.k!=="outings")setOutingDayFilter(null);}} style={{padding:"10px 10px",border:"none",borderBottom:`2px solid ${tab===t.k?C.rust:"transparent"}`,background:"transparent",fontFamily:"'DM Mono',monospace",fontSize:8,letterSpacing:1,textTransform:"uppercase",cursor:"pointer",color:tab===t.k?C.rust:"#888",whiteSpace:"nowrap",flexShrink:0,display:"flex",gap:4,alignItems:"center"}}>
                   {t.l}{t.n>0&&<span style={{background:C.parch,color:"#888",borderRadius:10,padding:"1px 5px",fontSize:8}}>{t.n}</span>}
                 </button>
               ))}
@@ -837,7 +906,7 @@ export default function SofiaPlanner(){
             {/* Tab content */}
             <div style={{flex:1,overflowY:"auto",padding:"16px"}}>
               <div style={{maxWidth:720,margin:"0 auto"}}>
-                {tab==="days"&&(plan.days||[]).map((d,i)=><DayCard key={i} d={d} form={{...form,destination:destDisplay}} plan={plan} setTab={setTab}/>)}
+                {tab==="days"&&(plan.days||[]).map((d,i)=><DayCard key={i} d={d} form={{...form,destination:destDisplay}} plan={plan} setTab={setTab} setOutingDayFilter={setOutingDayFilter}/>)}
                 {tab==="agenda"&&<AgendaSection agenda={plan.agenda}/>}
                 {tab==="sites"&&(<>
                   {plan.tourism_office?.website&&(<div style={{background:"#fff",border:"1.5px solid "+C.gold,borderRadius:8,padding:"16px 18px",marginBottom:16,display:"flex",gap:12,alignItems:"center"}}>
@@ -855,7 +924,17 @@ export default function SofiaPlanner(){
                 </>)}
                 {tab==="hotels"&&(plan.accommodations||[]).map((h,i)=><ItemCard key={i} item={h} type="accommodations" i={i} form={{...form,destination:destDisplay}}/>)}
                 {tab==="restos"&&(plan.restaurants||[]).map((r,i)=><ItemCard key={i} item={r} type="restaurants" i={i} form={{...form,destination:destDisplay}}/>)}
-                {tab==="outings"&&(plan.outings||[]).map((o,i)=><OutingCard key={i} item={o} i={i} form={{...form,destination:destDisplay}}/>)}
+                {tab==="outings"&&(
+                  <div>
+                    {outingDayFilter&&(
+                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,padding:"8px 12px",background:C.forest+"11",border:"1px solid "+C.forest,borderRadius:6}}>
+                        <span style={{fontSize:12,color:C.forest,fontWeight:600}}>🗓️ Jour {outingDayFilter} uniquement</span>
+                        <button onClick={()=>setOutingDayFilter(null)} style={{marginLeft:"auto",background:"none",border:"1px solid "+C.forest,borderRadius:12,padding:"2px 8px",cursor:"pointer",fontSize:10,color:C.forest}}>✕ Voir tout</button>
+                      </div>
+                    )}
+                    {(plan.outings||[]).filter(o=>!outingDayFilter||o.day_num===outingDayFilter||!o.day_num).map((o,i)=><OutingCard key={i} item={o} i={i} form={{...form,destination:destDisplay}}/>)}
+                  </div>
+                )}
                 {tab==="tips"&&(<div style={{background:"#fff",border:"1.5px solid "+C.parch,borderRadius:8,padding:"20px 24px"}}>
                   <div style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700,marginBottom:16}}>💡 Conseils pratiques</div>
                   {(plan.tips||[]).map((t,i)=>(<div key={i} style={{display:"flex",gap:12,marginBottom:14,paddingBottom:14,borderBottom:i<(plan.tips||[]).length-1?"1px solid "+C.parch:"none"}}>
