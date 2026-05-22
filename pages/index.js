@@ -634,7 +634,7 @@ export default function SofiaPlanner(){
   const [chatIn,setChatIn]=useState("");
   const [chatLoad,setChatLoad]=useState(false);
   const [tab,setTab]=useState("days");
-  const [overloaded,setOverloaded]=useState(false);
+  const [genError,setGenError]=useState(null); // {type:'overloaded'|'network'|'error', msg:string}
   const [outingDayFilter,setOutingDayFilter]=useState(null);
   const [uploadedFile,setUploadedFile]=useState(null);
   const bottomRef=useRef(null);
@@ -662,19 +662,33 @@ export default function SofiaPlanner(){
 
   const generate=async()=>{
     if(!validate())return;
-    setPhase("loading");setOverloaded(false);
+    setPhase("loading");setGenError(null);
     try{
       const body={formData:form.destination||form.budget?form:null};
       if(uploadedFile){body.fileData=uploadedFile.data;body.fileType=uploadedFile.type;}
       const res=await fetch("/api/plan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
       const data=await res.json();
-      if(res.status===529||data.error==="OVERLOADED"){setPhase("form");setOverloaded(true);return;}
-      if(!res.ok)throw new Error(data.error||"Erreur");
+      if(res.status===529||data.error==="OVERLOADED"){
+        setPhase("form");
+        setGenError({type:"overloaded",msg:"Les serveurs IA sont surchargés en ce moment. Réessaie dans 1-2 minutes."});
+        return;
+      }
+      if(!res.ok) throw new Error(data.error||"Erreur serveur "+res.status);
       if(data.type==="plan"){
         const p={...data.data,destination:fixDest(form.destination||data.data.destination||"Voyage")};
         setPlan(p);setMsgs([{role:"assistant",content:data.data.intro||"Votre plan est prêt !"}]);setPhase("result");
-      }else{setPhase("form");setOverloaded(true);}
-    }catch(err){setPhase("form");setOverloaded(true);}
+      }else{
+        setPhase("form");
+        setGenError({type:"error",msg:"La génération n'a pas abouti. Vérifie que tu as bien rempli les champs obligatoires et réessaie."});
+      }
+    }catch(err){
+      setPhase("form");
+      if(!navigator.onLine){
+        setGenError({type:"network",msg:"Pas de connexion internet. Vérifie ta connexion et réessaie."});
+      } else {
+        setGenError({type:"error",msg:"Une erreur inattendue s'est produite. Réessaie dans quelques instants."});
+      }
+    }
   };
 
   const sendChat=async()=>{
@@ -692,7 +706,7 @@ export default function SofiaPlanner(){
       }else if(data.type==="chat"&&data.reply){
         setMsgs([...newMsgs,{role:"assistant",content:data.reply}]);
       }else{
-        setMsgs([...newMsgs,{role:"assistant",content:"Désolée, les serveurs sont surchargés. Réessaie dans 1 minute ! — Sofia 🌍"}]);
+        setMsgs([...newMsgs,{role:"assistant",content:"⏳ Les serveurs sont surchargés en ce moment. Réessaie dans 1 minute ! — Sofia 🌍"}]);
       }
     }catch{setMsgs([...newMsgs,{role:"assistant",content:"Désolée, erreur de connexion. Réessaie ! — Sofia 🌍"}]);}
     setChatLoad(false);
@@ -763,11 +777,21 @@ export default function SofiaPlanner(){
             <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:"clamp(24px,5vw,44px)",fontWeight:900,lineHeight:1.1}}>Planifie tes <em style={{color:C.rust}}>vacances parfaites</em></h1>
             <p style={{color:C.mist,fontSize:14,marginTop:10,maxWidth:480,margin:"10px auto 0"}}>Sofia crée ton plan complet avec itinéraire, incontournables, hébergements, restaurants, sorties et valise</p>
           </div>
-          {overloaded&&(<div style={{background:"#fff3cd",border:"1.5px solid "+C.gold,borderRadius:6,padding:"14px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10}}>
-            <span style={{fontSize:20,flexShrink:0}}>⏳</span>
-            <div style={{flex:1}}><div style={{fontFamily:"'DM Mono',monospace",fontSize:10,letterSpacing:2,color:C.gold,marginBottom:2}}>Génération échouée</div><div style={{fontSize:13,color:"#666"}}>Les serveurs sont surchargés. Attends 1-2 minutes et réessaie.</div></div>
-            <button onClick={()=>setOverloaded(false)} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#aaa"}}>×</button>
-          </div>)}
+          {genError&&(
+            <div style={{background:genError.type==="network"?"#e3f2fd":genError.type==="overloaded"?"#fff3cd":"#fce4ec",border:"1.5px solid "+(genError.type==="network"?"#1565c0":genError.type==="overloaded"?C.gold:"#c62828"),borderRadius:6,padding:"14px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10}}>
+              <span style={{fontSize:20,flexShrink:0}}>{genError.type==="network"?"📵":genError.type==="overloaded"?"⏳":"⚠️"}</span>
+              <div style={{flex:1}}>
+                <div style={{fontFamily:"'DM Mono',monospace",fontSize:10,letterSpacing:2,color:genError.type==="network"?"#1565c0":genError.type==="overloaded"?C.gold:"#c62828",marginBottom:2,textTransform:"uppercase"}}>
+                  {genError.type==="network"?"Pas de connexion":genError.type==="overloaded"?"Serveurs surchargés":"Génération échouée"}
+                </div>
+                <div style={{fontSize:13,color:"#555"}}>{genError.msg}</div>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:6,flexShrink:0}}>
+                <button onClick={()=>{setGenError(null);generate();}} style={{background:C.rust,color:"#fff",border:"none",borderRadius:4,padding:"6px 12px",cursor:"pointer",fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:1,whiteSpace:"nowrap"}}>🔄 Réessayer</button>
+                <button onClick={()=>setGenError(null)} style={{background:"none",border:"none",fontSize:12,cursor:"pointer",color:"#aaa",textAlign:"center"}}>✕ Fermer</button>
+              </div>
+            </div>
+          )}
           <div style={{background:"#fff",border:"1.5px solid "+C.parch,borderRadius:8,padding:"24px 20px",boxShadow:"5px 5px 0 "+C.parch}}>
             <FileUpload file={uploadedFile} onFile={setUploadedFile} onClear={()=>setUploadedFile(null)}/>
             {/* Destination & dates */}
