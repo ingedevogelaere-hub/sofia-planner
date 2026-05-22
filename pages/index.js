@@ -906,19 +906,23 @@ export default function SofiaPlanner(){
             </div>
             <div style={{borderTop:"1px solid "+C.parch,padding:"10px 12px",flexShrink:0}}>
               <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:8}}>
-                {["Ajoute une journée",
-                  plan?.outings?.length?"Plus d'activités locales":"Propose des activités",
-                  plan?.accommodations?.[0]?.name?`Alternative à ${plan.accommodations[0].name}`:"Hébergement moins cher",
-                  "Que faire s'il pleut ?",
-                  plan?.restaurants?.[0]?.name?`Autre option que ${plan.restaurants[0].name}`:"Conseil restaurant ce soir",
-                  "Optimise le budget"
-                ].map(s=>(
-                  <button key={s} onClick={()=>setChatIn(s)} style={{padding:"4px 8px",background:C.cream,border:"1px solid "+C.parch,borderRadius:12,fontFamily:"'DM Mono',monospace",fontSize:8,cursor:"pointer",color:"#888"}}>{s}</button>
-                ))}
+                {(()=>{
+                  const sugg=[
+                    "Ajoute une journée",
+                    plan?.outings?.length ? "Plus d'activités locales" : "Propose des activités",
+                    plan?.accommodations?.[0]?.name ? "Alternative à "+plan.accommodations[0].name : "Hébergement moins cher",
+                    "Que faire s'il pleut ?",
+                    plan?.restaurants?.[0]?.name ? "Autre option que "+plan.restaurants[0].name : "Conseil restaurant ce soir",
+                    "Optimise le budget"
+                  ];
+                  return sugg.map(s=>(
+                    <button key={s} onClick={()=>setChatIn(s)} style={{padding:"4px 8px",background:C.cream,border:"1px solid "+C.parch,borderRadius:12,fontFamily:"'DM Mono',monospace",fontSize:8,cursor:"pointer",color:"#888"}}>{s}</button>
+                  ));
+                })()}
               </div>
               <div style={{display:"flex",gap:8}}>
                 <input value={chatIn} onChange={e=>setChatIn(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendChat()} placeholder="Demande un changement à Sofia…" disabled={chatLoad} style={{flex:1,padding:"9px 13px",border:"1.5px solid "+C.parch,borderRadius:20,background:C.cream,fontFamily:"'DM Sans',sans-serif",fontSize:12,color:C.ink,outline:"none"}}/>
-                <button onClick={sendChat} disabled={!chatIn.trim()||chatLoad} style={{padding:"9px 14px",background:chatIn.trim()&&!chatLoad?C.rust:"#ccc",color:"#fff",border:"none",borderRadius:20,cursor:chatIn.trim()&&!chatLoad?"pointer":"not-allowed",fontSize:15,flexShrink:0}}>➤</button>
+                <button onClick={sendChat} disabled={!chatIn.trim()||chatLoad} style={{padding:"9px 14px",background:chatIn.trim()&&!chatLoad?C.rust:"#ccc",color:"#fff",border:"none",borderRadius:20,cursor:chatIn.trim()&&!chatLoad?"pointer":"not-allowed",fontSize:15,flexShrink:0}}>&#9658;</button>
               </div>
               <div style={{textAlign:"center",marginTop:6,fontFamily:"'DM Mono',monospace",fontSize:7,color:"#ccc",letterSpacing:2}}>SOFIA · ON THE ROAD AGAIN</div>
             </div>
@@ -926,8 +930,5 @@ export default function SofiaPlanner(){
         </div>
       )}
     </>
-  );
-}
-     </>
   );
 }
