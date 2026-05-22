@@ -1,7 +1,4 @@
-export const config = {
-  api: { bodyParser: { sizeLimit: '10mb' } },
-  maxDuration: 60,
-};
+export const config = { api: { bodyParser: { sizeLimit: '10mb' } } };
 
 function extractJSON(text) {
   const attempts = [
@@ -12,91 +9,111 @@ function extractJSON(text) {
   ];
   for (const a of attempts) {
     if (!a) continue;
-    try { const j=JSON.parse(a); if(j&&typeof j==='object') return j; } catch {}
+    try { const j = JSON.parse(a); if (j && typeof j === 'object') return j; } catch {}
     try {
-      let f=a;
-      if(f.match(/"[^"]*$/)) f+='"';
+      let f = a;
+      if (f.match(/"[^"]*$/)) f += '"';
       const o=(f.match(/\{/g)||[]).length-(f.match(/\}/g)||[]).length;
       const ar=(f.match(/\[/g)||[]).length-(f.match(/\]/g)||[]).length;
       for(let i=0;i<ar;i++) f+=']';
       for(let i=0;i<o;i++) f+='}';
-      const j=JSON.parse(f); if(j&&typeof j==='object') return j;
+      const j = JSON.parse(f);
+      if (j && typeof j === 'object') return j;
     } catch {}
   }
   return null;
 }
 
-async function callAPI(model, system, messages) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": process.env.ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
-      "anthropic-beta": "prompt-caching-2024-07-31"
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: 5500,
-      system: [{ type:"text", text:system, cache_control:{ type:"ephemeral" } }],
-      messages
-    })
-  });
-  return res;
+function planSummary(plan) {
+  if (!plan) return 'Aucun plan actuel.';
+  try {
+    return JSON.stringify({
+      destination: plan.destination,
+      days: (plan.days||[]).map(d=>({num:d.num,title:d.title,location:d.location,morning:d.morning,afternoon:d.afternoon,evening:d.evening})),
+      accommodations: (plan.accommodations||[]).map(h=>({name:h.name,type:h.type,location:h.location,price:h.price,website:h.website})),
+      restaurants: (plan.restaurants||[]).map(r=>({name:r.name,cuisine:r.cuisine,address:r.address,specialty:r.specialty})),
+      outings: (plan.outings||[]).map(o=>({name:o.name,type:o.type,day_num:o.day_num,duration:o.duration,difficulty:o.difficulty})),
+      remarkable_sites: (plan.remarkable_sites||[]).map(s=>({name:s.name,location:s.location})),
+      tourism_office: plan.tourism_office,
+      budget: plan.budget,
+      tips: plan.tips,
+      agenda: plan.agenda,
+      packing_essentials: plan.packing_essentials,
+    });
+  } catch { return `Destination: ${plan.destination||'inconnue'}`; }
 }
 
-async function callClaude(system, messages) {
-  // Try primary model first, then fallback
-  const models = [
-    "claude-haiku-4-5-20251001",
-    "claude-3-5-haiku-20241022",
-    "claude-3-haiku-20240307",
-  ];
-
-  for (let mi = 0; mi < models.length; mi++) {
-    const model = models[mi];
-    for (let attempt = 0; attempt <= 1; attempt++) {
-      try {
-        if (attempt > 0) await new Promise(r => setTimeout(r, 2000));
-        const res = await callAPI(model, system, messages);
-        const data = await res.json();
-
-        if (res.status === 529 || data.error?.type === "overloaded_error") {
-          // Try next attempt or next model
-          if (attempt === 0) continue; // retry same model once
-          break; // move to next model
-        }
-        if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
-        return data.content[0].text;
-      } catch(e) {
-        if (attempt === 0) continue;
-        if (mi < models.length - 1) break; // try next model
+async function callClaude(system, messages, retries=2) {
+  for (let i=0; i<=retries; i++) {
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": process.env.ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
+          "anthropic-beta": "prompt-caching-2024-07-31"
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 7000,
+          system: [{ type:"text", text:system, cache_control:{ type:"ephemeral" } }],
+          messages
+        })
+      });
+      const data = await res.json();
+      if (res.status===529 || data.error?.type==="overloaded_error") {
+        if (i<retries) { await new Promise(r=>setTimeout(r,3000*(i+1))); continue; }
         throw new Error("OVERLOADED");
       }
+      if (!res.ok) throw new Error(data.error?.message||"Erreur API");
+      return data.content[0].text;
+    } catch(e) {
+      if (i<retries && e.message!=="OVERLOADED") { await new Promise(r=>setTimeout(r,2000)); continue; }
+      throw e;
     }
   }
-  throw new Error("OVERLOADED");
 }
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).end();
+  if (req.method!=="POST") return res.status(405).end();
   const { messages, formData, currentPlan, fileData, fileType } = req.body;
 
-  const FMT = `{"intro":"Message chaleureux","days":[{"num":1,"title":"Titre","location":"Lieu court Maps-compatible","morning":"Matin","afternoon":"Après-midi","evening":"Soirée + restaurant","tip":"Astuce","day_num":1}],"remarkable_sites":[{"name":"Nom","label":"Label","location":"Adresse","description":"Desc","website":"URL","coords":[lat,lon],"unsplash_query":"mots précis pour photo"}],"accommodations":[{"name":"Nom","type":"Type","location":"Adresse","price":"Prix/nuit","why":"Raison","website":"Site","coords":[lat,lon],"unsplash_query":"mots photo"}],"restaurants":[{"name":"Nom","cuisine":"Cuisine","specialty":"Plat","price":"€","tip":"Conseil","address":"Adresse","website":"Site","coords":[lat,lon]}],"outings":[{"name":"Nom","type":"randonnée|activité","subtype":"desc","day_num":1,"distance":"Xkm","duration":"Xh","difficulty":"Facile/Moyen/Difficile","highlights":"Ce qu on voit","start_point":"Départ","transport_from_center":"Accès","price":"Prix","address":"Adresse","website":"Site","coords":[lat,lon],"unsplash_query":"mots photo"}],"agenda":[{"type":"positive","name":"Événement","date":"Date","description":"Détails"}],"tourism_office":{"name":"Nom","website":"URL officielle","address":"Adresse","phone":"Tel"},"tips":["conseil1","conseil2","conseil3","conseil4","conseil5"],"budget":{"accommodation":"X€/nuit","meals":"X€/j","activities":"X€/j","transport":"X€/j","total":"Total"},"packing_essentials":[{"category":"Documents","items":["Passeport","Carte d'identité"]},{"category":"Santé","items":["Crème solaire","Pharmacie"]},{"category":"Vêtements","items":["Adaptés météo","Chaussures"]},{"category":"Technologie","items":["Adaptateur","Chargeurs"]},{"category":"Divers","items":["Argent local","Carte bancaire"]}]}`;
+  const FMT = `{"intro":"Message chaleureux","days":[{"num":1,"title":"Titre","location":"Nom court (1-3 mots Maps-compatible)","morning":"Matin","afternoon":"Après-midi","evening":"Soirée + restaurant","tip":"Astuce","unsplash_query":"mots-clés photo précis"}],"remarkable_sites":[{"name":"Nom","label":"Label","location":"Adresse","description":"Desc","website":"URL","coords":[lat,lon],"unsplash_query":"mots-clés"}],"accommodations":[{"name":"Nom","type":"Type","location":"Adresse","price":"Prix/nuit","why":"Raison","website":"Site","coords":[lat,lon],"unsplash_query":"mots-clés"}],"restaurants":[{"name":"Nom","cuisine":"Cuisine","specialty":"Plat","price":"€","tip":"Conseil","address":"Adresse","website":"Site","coords":[lat,lon]}],"outings":[{"name":"Nom","type":"randonnée|activité","subtype":"détail","day_num":1,"distance":"Xkm","duration":"Durée","difficulty":"Facile/Moyen/Difficile","highlights":"Ce qu'on voit","start_point":"Départ","transport_from_center":"Accès","price":"Prix","address":"Adresse","website":"Site","coords":[lat,lon],"unsplash_query":"mots-clés"}],"agenda":[{"type":"positive|negative|info","name":"Nom","date":"Date","description":"Détails"}],"tourism_office":{"name":"Nom complet","website":"URL officielle","address":"Adresse","phone":"Tel"},"tips":["conseil1","conseil2","conseil3","conseil4","conseil5"],"budget":{"accommodation":"X€/nuit","meals":"X€/jour","activities":"X€/jour","transport":"X€/jour","total":"Total"},"packing_essentials":[{"category":"Documents","items":["item1"]},{"category":"Santé","items":["item1"]},{"category":"Vêtements","items":["item1"]},{"category":"Technologie","items":["item1"]},{"category":"Divers","items":["item1"]}]}`;
 
-  const sysForm = `Tu es Sofia, conseillère voyage pour "On The Road Again". Réponds TOUJOURS en français.
-CRITICAL: JSON brut uniquement. PAS de texte. PAS de backticks. Commence par { termine par }.
-Le champ "location" des jours: NOM COURT uniquement (1-3 mots, Google Maps compatible). Ex: "Cap Corse", "Piana", "Bruxelles Centre". JAMAIS de descriptions longues.
-Format: ${FMT}
-Règles: noms réels, coords GPS, agenda aux dates du voyage, hébergement précis EN PREMIER, incontournables inclus.${formData?.pmr?'\nCONTRAINTE PMR: tout doit être accessible fauteuil roulant. Hébergements PMR, restaurants plain-pied, activités adaptées, transports accessibles.':''}`;
+  const sysForm = `Tu es Sofia, conseillère de voyage experte. Réponds TOUJOURS en français.
+CRITICAL: Réponds UNIQUEMENT avec du JSON brut. PAS de texte avant/après. PAS de backticks. Commence par { et termine par }.
+RÈGLE location: NOM COURT uniquement (1-3 mots reconnaissables par Google Maps). Ex: "Cap Corse", "Piana", "Sablon". JAMAIS de descriptions.
+Format JSON: ${FMT}
+Règles: noms réels, coords GPS, agenda avec événements aux dates, hébergement mentionné EN PREMIER, incontournables inclus, day_num dans outings.
+${req.body.formData?.pmr ? 'CONTRAINTE PMR: tout doit être accessible fauteuil roulant (hébergements, restos, activités, transports).' : ''}`;
 
-  const sysChat = `Tu es Sofia, conseillère voyage pour "On The Road Again". Réponds TOUJOURS en français.
-${currentPlan?`Plan actuel (${currentPlan.destination||''}): ${JSON.stringify({destination:currentPlan.destination,days:currentPlan.days,accommodations:(currentPlan.accommodations||[]).slice(0,3),restaurants:(currentPlan.restaurants||[]).slice(0,3),outings:(currentPlan.outings||[]).slice(0,3),budget:currentPlan.budget})}
-Modification → JSON COMPLET mis à jour, commence par {. Question → français naturel.`:'Réponds en français naturel.'}
-Ne jamais afficher de JSON brut. — Sofia 🌍`;
+  const sysChat = `Tu es Sofia, IA conseillère de voyage intégrée dans l'application "On The Road Again". Réponds TOUJOURS en français.
+
+${currentPlan && currentPlan.destination ? `
+=== PLAN ACTUEL ===
+${planSummary(currentPlan)}
+=== FIN DU PLAN ===
+
+INSTRUCTIONS IMPORTANTES:
+1. Si l'utilisateur demande une MODIFICATION du plan (ajouter/supprimer une journée, changer un hôtel, modifier une activité, adapter le budget, version végétarienne, etc.):
+   → Réponds avec le JSON COMPLET mis à jour au MÊME FORMAT que le plan actuel
+   → Commence DIRECTEMENT par { sans aucun texte avant
+   → Inclus TOUS les champs (jours, hébergements, restaurants, sorties, agenda, conseils, budget, valise)
+   
+2. Si l'utilisateur pose une QUESTION sur le voyage ou veut des infos:
+   → Réponds en français naturel, sois utile et précise
+   → Tu PEUX modifier le plan si c'est implicitement demandé
+
+3. Tu es une IA capable de TOUT faire dans cette application. Ne dis JAMAIS de contacter une équipe ou un service. Tu gères tout toi-même.
+` : `
+Réponds en français naturel. Tu es une conseillère de voyage IA intégrée dans l'app.
+Ne dis jamais de contacter une équipe externe. Tu gères tout toi-même.
+`}
+Signe toujours: — Sofia 🌍`;
 
   try {
-    const isForm = !!(formData || fileData);
+    const isForm = !!(formData||fileData);
     const system = isForm ? sysForm : sysChat;
     let allMessages;
 
@@ -106,31 +123,36 @@ Ne jamais afficher de JSON brut. — Sofia 🌍`;
         if (fileType.startsWith('image/')) content.push({type:"image",source:{type:"base64",media_type:fileType,data:fileData}});
         else if (fileType==='application/pdf') content.push({type:"document",source:{type:"base64",media_type:"application/pdf",data:fileData}});
       }
-      const hasForm = formData && (formData.destination || formData.budget);
+      const hasForm = formData && (formData.destination||formData.budget);
       const endDate = formData?.dateStart
         ? new Date(new Date(formData.dateStart).getTime()+formData.nuits*86400000).toISOString().split("T")[0]
         : "Flexibles";
-      const transport = formData?.transport==='sofia'
-        ? 'Sofia recommande le meilleur selon la destination et le style'
-        : formData?.transport==='Autre' ? formData.transport_autre : formData?.transport || 'Non précisé';
+      const styleVal = (formData.styles||[]).includes("__sofia__")
+        ? "Sofia doit recommander le style idéal pour cette destination"
+        : (formData.styles||[]).filter(s=>s!=="__sofia__").join(", ")||"Varié";
+      const hebergVal = formData.hebergement==="sofia"
+        ? "Sofia doit recommander le meilleur hébergement selon destination et budget"
+        : formData.hebergement==="Autre" ? formData.hebergement_autre : formData.hebergement||"Non précisé";
+      const transportVal = formData.transport==="sofia"
+        ? "Sofia doit recommander le meilleur transport local selon la destination"
+        : formData.transport==="Autre" ? formData.transport_autre : formData.transport||"Non précisé";
 
-      const prompt = (!hasForm && fileData)
-        ? `Analyse cette image/document. Extrais toutes les infos de voyage. Complète avec tes recommandations. JSON brut seulement, commence par {`
-        : `Plan de vacances. JSON brut seulement, commence par {
+      const prompt = (!hasForm&&fileData)
+        ? `Analyse cette image/photo. Extrais toutes les infos de voyage visibles. Complète avec tes meilleures recommandations. JSON brut seulement, commence par {`
+        : `Crée mon plan de vacances. JSON brut seulement, commence par {
 Destination: ${formData.destination}
 Départ depuis: ${formData.depart||"Non précisé"}
 Transport aller: ${Array.isArray(formData.transport_to)?formData.transport_to.join("+"):formData.transport_to||"Non précisé"}${formData.transport_to_autre?" ("+formData.transport_to_autre+")":""}
 Dates: ${formData.dateStart||"Flexibles"} → ${formData.dateEnd||endDate} (${formData.nuits} nuits)
 Voyageurs: ${formData.voyageurs==="Autre"?formData.voyageurs_autre:formData.voyageurs||"Non précisé"}
 Budget: ${formData.budget==="Budget global"?formData.budget_global:formData.budget||"Non précisé"}
-Style: ${(formData.styles||[]).includes("__sofia__")?"Sofia doit recommander le style idéal pour cette destination":(formData.styles||[]).filter(s=>s!=="__sofia__").join(", ")||"Varié"}${formData.style_autre?", "+formData.style_autre:""}
-Hébergement: ${formData.hebergement==="sofia"?"Sofia recommande le meilleur":formData.hebergement==="Autre"?formData.hebergement_autre:formData.hebergement||"Non précisé"}
-Transport sur place: ${transport}
-Besoins: ${formData.special||"Aucun"}
+Style: ${styleVal}${formData.style_autre?", "+formData.style_autre:""}
+Hébergement: ${hebergVal}
+Transport sur place: ${transportVal}
+Besoins: ${formData.special||"Aucun"}${formData.pmr?" + ACCESSIBILITÉ PMR REQUISE":""}
 Incontournables: ${formData.musts||"Propose les incontournables"}
 À éviter: ${formData.avoid||"Rien"}
 Notes: ${formData.notes||"Aucune"}${fileData?" + document joint":""}`;
-
       content.push({type:"text",text:prompt});
       allMessages = [{role:"user",content}];
     } else {
