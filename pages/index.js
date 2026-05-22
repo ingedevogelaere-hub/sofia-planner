@@ -117,7 +117,7 @@ function CityInput({value, onChange, placeholder, style: styleProp}){
   const timerRef = useRef(null);
 
   const search = async (q) => {
-    if (q.length < 2) { setSugg([]); setShow(false); return; }
+    if (q.length < 1) { setSugg([]); setShow(false); return; }
     setLoading(true);
     try {
       const r = await fetch(
@@ -125,11 +125,13 @@ function CityInput({value, onChange, placeholder, style: styleProp}){
         { headers: { 'Accept-Language': 'fr' } }
       );
       const data = await r.json();
-      const cities = data.map(d => {
-        const city = d.address?.city || d.address?.town || d.address?.village || d.address?.hamlet || d.name;
-        const country = d.address?.country || '';
-        return { city, country };
-      }).filter((c, i, arr) => c.city && arr.findIndex(x => x.city === c.city) === i);
+      const cities = data
+        .filter(d => ['city','town','village','municipality','administrative','hamlet'].includes(d.type||d.class))
+        .map(d => ({
+          city: d.address?.city || d.address?.town || d.address?.municipality || d.address?.village || d.name,
+          country: d.address?.country || d.address?.country_code?.toUpperCase() || ''
+        }))
+        .filter((c,i,arr)=>c.city&&arr.findIndex(x=>x.city===c.city)===i);
       setSugg(cities.slice(0, 5));
       setShow(cities.length > 0);
     } catch { setSugg([]); setShow(false); }
@@ -139,7 +141,7 @@ function CityInput({value, onChange, placeholder, style: styleProp}){
   const handleChange = (v) => {
     onChange(v);
     clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => search(v), 350);
+    timerRef.current = setTimeout(() => search(v), 200);
   };
 
   const select = (city) => {
@@ -153,7 +155,8 @@ function CityInput({value, onChange, placeholder, style: styleProp}){
       <div style={{...{border:'1.5px solid '+C.parch,borderRadius:6,background:C.cream,overflow:'visible'}, ...styleProp}}>
         <input style={{width:'100%',padding:'11px 14px',border:'none',background:'transparent',fontFamily:"'DM Sans',sans-serif",fontSize:13,color:C.ink,outline:'none',boxSizing:'border-box'}}
           value={value} onChange={e=>handleChange(e.target.value)} placeholder={placeholder}
-          onFocus={()=>value.length>=2&&search(value)} onBlur={()=>setTimeout(()=>setShow(false),200)}
+          spellCheck={false} autoComplete="off"
+          onFocus={()=>value.length>=1&&search(value)} onBlur={()=>setTimeout(()=>setShow(false),200)}
         />
       </div>
       {show && sugg.length > 0 && (
@@ -736,11 +739,11 @@ export default function SofiaPlanner(){
         setPlan(p);setMsgs([{role:"assistant",content:data.data.intro||"Votre plan est prêt !"}]);setPhase("result");
       }else{
         setPhase("form");
-        setGenError({type:"error",msg:"La génération n'a pas abouti. Vérifie que tu as bien rempli les champs obligatoires et réessaie."});
+        setGenError({type:"error",msg:"La génération n'a pas abouti. Vérifie tes champs et relance."});
       }
     }catch(err){
       setPhase("form");
-      setGenError({type:"error",msg:"Une erreur s'est produite. Vérifie ta connexion et réessaie dans quelques instants."});
+      setGenError({type:"error",msg:"Génération échouée. Clique sur \"Créer mon plan\" pour réessayer."});
     }
   };
 
@@ -824,7 +827,7 @@ export default function SofiaPlanner(){
 
       {/* FORM */}
       {phase==="form"&&(
-        <div style={{maxWidth:760,margin:"0 auto",padding:"24px 16px 80px"}}>
+        <div style={{maxWidth:960,margin:"0 auto",padding:"24px 32px 80px"}}>
           <div style={{textAlign:"center",marginBottom:28}}>
             <div style={{fontSize:44,marginBottom:10}}>🌍</div>
             <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:"clamp(24px,5vw,44px)",fontWeight:900,lineHeight:1.1}}>Planifie tes <em style={{color:C.rust}}>vacances parfaites</em></h1>
@@ -839,10 +842,7 @@ export default function SofiaPlanner(){
                 </div>
                 <div style={{fontSize:13,color:"#555"}}>{genError.msg}</div>
               </div>
-              <div style={{display:"flex",flexDirection:"column",gap:6,flexShrink:0}}>
-                <button onClick={generate} style={{background:C.rust,color:"#fff",border:"none",borderRadius:4,padding:"6px 12px",cursor:"pointer",fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:1,whiteSpace:"nowrap"}}>🔄 Réessayer</button>
-                <button onClick={()=>setGenError(null)} style={{background:"none",border:"none",fontSize:12,cursor:"pointer",color:"#aaa",textAlign:"center"}}>✕ Fermer</button>
-              </div>
+              <button onClick={()=>setGenError(null)} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",color:"#aaa",flexShrink:0,padding:"0 4px"}}>×</button>
             </div>
           )}
           <div style={{background:"#fff",border:"1.5px solid "+C.parch,borderRadius:8,padding:"24px 20px",boxShadow:"5px 5px 0 "+C.parch}}>
@@ -859,7 +859,7 @@ export default function SofiaPlanner(){
                 <div><span style={lbl}>Ville de départ</span><CityInput value={form.depart} onChange={v=>setF("depart",v)} placeholder="Luxembourg, Paris, Bruxelles…"/></div>
               </div>
               <div><span style={lbl}>📅 Dates du séjour</span>
-                <DateRangePicker dateStart={form.dateStart} dateEnd={form.dateEnd} nuits={form.nuits} onDateStart={v=>handleDate("dateStart",v)} onDateEnd={v=>handleDate("dateEnd",v)} onNuits={v=>setF("nuits",v)}/>
+                <div style={{maxWidth:340}}><DateRangePicker dateStart={form.dateStart} dateEnd={form.dateEnd} nuits={form.nuits} onDateStart={v=>handleDate("dateStart",v)} onDateEnd={v=>handleDate("dateEnd",v)} onNuits={v=>setF("nuits",v)}/></div>
                 {errors.dateEnd&&<div style={{fontSize:11,color:C.rust,marginTop:4}}>⚠️ {errors.dateEnd}</div>}
               </div>
             </div>
@@ -940,10 +940,10 @@ export default function SofiaPlanner(){
             <div style={{marginBottom:24}}>
               {secT("✨ Tes envies & besoins")}
               <div className="fg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                <div><span style={lbl}>Incontournables / Rêves</span><div style={inpBox}><textarea style={{...inp,height:80,resize:"none",padding:"10px 14px"}} value={form.musts} onChange={e=>setF("musts",e.target.value)} placeholder="Grand-Place, Calanques, plage Palombaggia…"/></div></div>
-                <div><span style={lbl}>À éviter</span><div style={inpBox}><textarea style={{...inp,height:80,resize:"none",padding:"10px 14px"}} value={form.avoid} onChange={e=>setF("avoid",e.target.value)} placeholder="Pas trop touristique…"/></div></div>
-                <div><span style={lbl}>Besoins spéciaux</span><div style={inpBox}><textarea style={{...inp,height:70,resize:"none",padding:"10px 14px"}} value={form.special} onChange={e=>setF("special",e.target.value)} placeholder="Végétarien, allergie, mobilité réduite…"/></div></div>
-                <div><span style={lbl}>Autres informations</span><div style={inpBox}><textarea style={{...inp,height:70,resize:"none",padding:"10px 14px"}} value={form.notes} onChange={e=>setF("notes",e.target.value)} placeholder="Passionné de plongée, fan de gastronomie…"/></div></div>
+                <div><span style={lbl}>Incontournables / Rêves</span><div style={inpBox}><textarea spellCheck={true} style={{...inp,height:80,resize:"none",padding:"10px 14px"}} value={form.musts} onChange={e=>setF("musts",e.target.value)} placeholder="Grand-Place, Calanques, plage Palombaggia…"/></div></div>
+                <div><span style={lbl}>À éviter</span><div style={inpBox}><textarea spellCheck={true} style={{...inp,height:80,resize:"none",padding:"10px 14px"}} value={form.avoid} onChange={e=>setF("avoid",e.target.value)} placeholder="Pas trop touristique…"/></div></div>
+                <div><span style={lbl}>Besoins spéciaux</span><div style={inpBox}><textarea spellCheck={true} style={{...inp,height:70,resize:"none",padding:"10px 14px"}} value={form.special} onChange={e=>setF("special",e.target.value)} placeholder="Végétarien, allergie, mobilité réduite…"/></div></div>
+                <div><span style={lbl}>Autres informations</span><div style={inpBox}><textarea spellCheck={true} style={{...inp,height:70,resize:"none",padding:"10px 14px"}} value={form.notes} onChange={e=>setF("notes",e.target.value)} placeholder="Passionné de plongée, fan de gastronomie…"/></div></div>
               </div>
             </div>
             {/* PMR Toggle */}
@@ -966,14 +966,17 @@ export default function SofiaPlanner(){
                     </div>
                   )}
                 </div>
-                <button onClick={()=>setF("pmr",!form.pmr)}
-                  style={{padding:"8px 16px",border:"1.5px solid",borderRadius:100,cursor:"pointer",fontFamily:"'DM Mono',monospace",fontSize:10,letterSpacing:1,fontWeight:700,flexShrink:0,transition:"all .2s",
-                    background:form.pmr?"#1565c0":"transparent",
-                    borderColor:form.pmr?"#1565c0":"#1565c0",
-                    color:form.pmr?"#fff":"#1565c0"
-                  }}>
-                  {form.pmr?"✓ ACTIVÉ":"Activer"}
-                </button>
+                {form.pmr?(
+                  <button onClick={()=>setF("pmr",false)}
+                    style={{padding:"7px 14px",border:"1.5px solid #c62828",borderRadius:100,cursor:"pointer",fontFamily:"'DM Mono',monospace",fontSize:10,letterSpacing:1,fontWeight:700,flexShrink:0,background:"#c62828",color:"#fff"}}>
+                    ✕ Désactiver
+                  </button>
+                ):(
+                  <button onClick={()=>setF("pmr",true)}
+                    style={{padding:"7px 14px",border:"1.5px solid #1565c0",borderRadius:100,cursor:"pointer",fontFamily:"'DM Mono',monospace",fontSize:10,letterSpacing:1,fontWeight:700,flexShrink:0,background:"transparent",color:"#1565c0"}}>
+                    Activer
+                  </button>
+                )}
               </div>
             </div>
             <button onClick={generate} style={{width:"100%",padding:"16px",background:C.rust,color:"#fff",border:"none",borderRadius:6,fontFamily:"'Playfair Display',serif",fontStyle:"italic",fontSize:19,cursor:"pointer"}}>
