@@ -125,13 +125,16 @@ function CityInput({value, onChange, placeholder, style: styleProp}){
         { headers: { 'Accept-Language': 'fr' } }
       );
       const data = await r.json();
+      // No type filter - Nominatim handles fuzzy matching, just extract city name
       const cities = data
-        .filter(d => ['city','town','village','municipality','administrative','hamlet'].includes(d.type||d.class))
         .map(d => ({
-          city: d.address?.city || d.address?.town || d.address?.municipality || d.address?.village || d.name,
-          country: d.address?.country || d.address?.country_code?.toUpperCase() || ''
+          city: d.address?.city || d.address?.town || d.address?.municipality ||
+                d.address?.village || d.address?.county || d.name || '',
+          country: d.address?.country || ''
         }))
-        .filter((c,i,arr)=>c.city&&arr.findIndex(x=>x.city===c.city)===i);
+        .filter(c => c.city && c.city.length > 1)
+        .filter((c,i,arr) => arr.findIndex(x=>x.city===c.city)===i)
+        .slice(0,5);
       setSugg(cities.slice(0, 5));
       setShow(cities.length > 0);
     } catch { setSugg([]); setShow(false); }
@@ -859,7 +862,34 @@ export default function SofiaPlanner(){
                 <div><span style={lbl}>Ville de départ</span><CityInput value={form.depart} onChange={v=>setF("depart",v)} placeholder="Luxembourg, Paris, Bruxelles…"/></div>
               </div>
               <div><span style={lbl}>📅 Dates du séjour</span>
-                <div style={{maxWidth:340}}><DateRangePicker dateStart={form.dateStart} dateEnd={form.dateEnd} nuits={form.nuits} onDateStart={v=>handleDate("dateStart",v)} onDateEnd={v=>handleDate("dateEnd",v)} onNuits={v=>setF("nuits",v)}/></div>
+                <div style={{display:"flex",gap:16,alignItems:"flex-start"}}>
+                  <div style={{flex:"0 0 auto",minWidth:0,width:"min(340px,100%)"}}>
+                    <DateRangePicker dateStart={form.dateStart} dateEnd={form.dateEnd} nuits={form.nuits} onDateStart={v=>handleDate("dateStart",v)} onDateEnd={v=>handleDate("dateEnd",v)} onNuits={v=>setF("nuits",v)}/>
+                  </div>
+                  {/* Trip summary on the right */}
+                  <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:8,paddingTop:4}}>
+                    {form.dateStart&&form.dateEnd?(
+                      <div style={{background:C.cream,border:"1.5px solid "+C.parch,borderRadius:8,padding:"14px 16px"}}>
+                        <div style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:900,color:C.gold,marginBottom:6}}>🌙 {form.nuits} nuits</div>
+                        <div style={{fontSize:12,color:C.mist,marginBottom:4}}>
+                          📅 Du {new Date(form.dateStart+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"long"})}
+                        </div>
+                        <div style={{fontSize:12,color:C.mist}}>
+                          🏠 Au {new Date(form.dateEnd+"T12:00:00").toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"long",year:"numeric"})}
+                        </div>
+                      </div>
+                    ):(
+                      <div style={{background:C.cream,border:"1.5px solid "+C.parch,borderRadius:8,padding:"14px 16px"}}>
+                        <div style={{fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:2,color:C.gold,textTransform:"uppercase",marginBottom:8}}>Comment ça marche ?</div>
+                        <div style={{fontSize:12,color:C.mist,lineHeight:1.7}}>
+                          1️⃣ Clique sur la date de départ<br/>
+                          2️⃣ Puis sur la date de retour<br/>
+                          3️⃣ Les nuits sont calculées automatiquement
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
                 {errors.dateEnd&&<div style={{fontSize:11,color:C.rust,marginTop:4}}>⚠️ {errors.dateEnd}</div>}
               </div>
             </div>
@@ -895,18 +925,52 @@ export default function SofiaPlanner(){
             {/* Style & hébergement */}
             <div style={{marginBottom:24,paddingBottom:24,borderBottom:"1px solid "+C.parch}}>
               {secT("🎯 Style & hébergement")}
-              <div style={{marginBottom:14}}><span style={lbl}>Style de voyage <span style={{fontSize:8,fontWeight:400,color:C.mist,letterSpacing:1}}>— plusieurs choix possibles</span></span>
-                <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
-                  {STYLES_LIST.map(s=><button key={s} onClick={()=>toggleArr("styles",s)} style={pillBtn(form.styles.includes(s),"#4A3560")}>{s}</button>)}
-                  {form.styles.includes("Autre")?<div style={{...inpBox,flex:1,minWidth:160}}><input autoFocus style={{...inp,padding:"7px 12px"}} value={form.style_autre} onChange={e=>setF("style_autre",e.target.value)} placeholder="Précise…"/></div>:<button onClick={()=>toggleArr("styles","Autre")} style={pillBtn(false)}>✏️ Autre</button>}
+              <div style={{marginBottom:14}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:7}}>
+                  <span style={lbl}>Style de voyage <span style={{fontSize:8,fontWeight:400,color:C.mist,letterSpacing:1}}>— plusieurs choix possibles</span></span>
+                  <button onClick={()=>{if(form.styles.includes("__sofia__"))setF("styles",[]);else setF("styles",["__sofia__"]);}}
+                    style={{padding:"3px 10px",border:"1.5px solid",borderRadius:100,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:1,transition:"all .15s",flexShrink:0,
+                      background:form.styles.includes("__sofia__")?"linear-gradient(135deg,#B8972E,#C1440E)":"transparent",
+                      borderColor:form.styles.includes("__sofia__")?C.gold:C.parch,
+                      color:form.styles.includes("__sofia__")?"#fff":C.gold,fontWeight:700}}>
+                    {form.styles.includes("__sofia__")?"✨ Sofia choisit":"✨ Sofia choisit"}
+                  </button>
                 </div>
+                {form.styles.includes("__sofia__")?(
+                  <div style={{padding:"10px 14px",background:"linear-gradient(135deg,#FDF8ED,#FFF9F0)",border:"1.5px solid "+C.gold,borderRadius:6,fontSize:12,color:"#4a3800"}}>
+                    <strong>✨ Sofia recommande !</strong>
+                    <div style={{color:C.mist,marginTop:2}}>Sofia analysera ta destination pour recommander le style de voyage idéal (culture, nature, gastronomie, aventure…)</div>
+                  </div>
+                ):(
+                  <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
+                    {STYLES_LIST.map(s=><button key={s} onClick={()=>toggleArr("styles",s)} style={pillBtn(form.styles.includes(s),"#4A3560")}>{s}</button>)}
+                    {form.styles.includes("Autre")?<div style={{...inpBox,flex:1,minWidth:160}}><input autoFocus style={{...inp,padding:"7px 12px"}} value={form.style_autre} onChange={e=>setF("style_autre",e.target.value)} placeholder="Précise…"/></div>:<button onClick={()=>toggleArr("styles","Autre")} style={pillBtn(false)}>✏️ Autre</button>}
+                  </div>
+                )}
               </div>
               <div className="fg2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-                <div id="field-hebergement"><span style={lbl}>Hébergement {!uploadedFile&&"*"}</span>
-                  <div style={{display:"flex",flexDirection:"column",gap:5}}>
-                    {HEBERGEMENTS.map(h=><button key={h} onClick={()=>setF("hebergement",h)} style={{...selBtn(form.hebergement===h,C.forest),borderColor:form.hebergement===h?C.forest:errors.hebergement?"#C1440E":C.parch}}>{h}</button>)}
-                    {form.hebergement==="Autre"?<div style={inpBox}><input autoFocus style={inp} value={form.hebergement_autre} onChange={e=>setF("hebergement_autre",e.target.value)} placeholder="Précise…"/></div>:<button onClick={()=>setF("hebergement","Autre")} style={{...selBtn(false),borderColor:errors.hebergement?"#C1440E":C.parch}}>✏️ Autre</button>}
+                <div id="field-hebergement">
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:7}}>
+                    <span style={lbl}>Hébergement {!uploadedFile&&"*"}</span>
+                    <button onClick={()=>setF("hebergement",form.hebergement==="sofia"?"":"sofia")}
+                      style={{padding:"3px 10px",border:"1.5px solid",borderRadius:100,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:1,transition:"all .15s",flexShrink:0,
+                        background:form.hebergement==="sofia"?"linear-gradient(135deg,#B8972E,#C1440E)":"transparent",
+                        borderColor:form.hebergement==="sofia"?C.gold:C.parch,
+                        color:form.hebergement==="sofia"?"#fff":C.gold,fontWeight:700}}>
+                      ✨ Sofia choisit
+                    </button>
                   </div>
+                  {form.hebergement==="sofia"?(
+                    <div style={{padding:"10px 14px",background:"linear-gradient(135deg,#FDF8ED,#FFF9F0)",border:"1.5px solid "+C.gold,borderRadius:6,fontSize:12,color:"#4a3800",marginBottom:6}}>
+                      <strong>✨ Sofia recommande !</strong>
+                      <div style={{color:C.mist,marginTop:2}}>Sofia choisira le meilleur hébergement selon ta destination et ton budget (hôtel boutique, villa, gîte authentique…)</div>
+                    </div>
+                  ):(
+                    <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                      {HEBERGEMENTS.map(h=><button key={h} onClick={()=>setF("hebergement",h)} style={{...selBtn(form.hebergement===h,C.forest),borderColor:form.hebergement===h?C.forest:errors.hebergement?"#C1440E":C.parch}}>{h}</button>)}
+                      {form.hebergement==="Autre"?<div style={inpBox}><input autoFocus style={inp} value={form.hebergement_autre} onChange={e=>setF("hebergement_autre",e.target.value)} placeholder="Précise…"/></div>:<button onClick={()=>setF("hebergement","Autre")} style={{...selBtn(false),borderColor:errors.hebergement?"#C1440E":C.parch}}>✏️ Autre</button>}
+                    </div>
+                  )}
                   {errors.hebergement&&<div style={{fontSize:11,color:C.rust,marginTop:4}}>⚠️ {errors.hebergement}</div>}
                 </div>
                 <div>
