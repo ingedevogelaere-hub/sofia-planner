@@ -730,7 +730,7 @@ export default function SofiaPlanner(){
       const data=await res.json();
       if(res.status===529||data.error==="OVERLOADED"){
         setPhase("form");
-        setGenError({type:"overloaded",msg:"Les serveurs IA sont surchargés en ce moment. Réessaie dans 1-2 minutes."});
+        setGenError({type:"overloaded",msg:"L'IA est temporairement surchargée. Patiente 30 secondes et clique à nouveau sur \"Créer mon plan\"."});
         return;
       }
       if(!res.ok) throw new Error(data.error||"Erreur serveur "+res.status);
@@ -996,6 +996,7 @@ export default function SofiaPlanner(){
           <div style={{fontFamily:"'Playfair Display',serif",fontSize:24,fontStyle:"italic",marginTop:18}}>
             {uploadedFile?"Sofia lit tes notes et prépare ton aventure…":"Sofia prépare ton aventure…"}
           </div>
+          <div style={{marginTop:12,fontSize:12,color:C.mist}}>Cela peut prendre jusqu'à 30 secondes…</div>
           <div style={{display:"flex",justifyContent:"center",gap:12,marginTop:14,flexWrap:"wrap"}}>
             {["🗺️ Itinéraire","📅 Agenda","⭐ Incontournables","🏨 Hébergements","🍽️ Restos","🎯 Sorties","🧳 Valise"].map((t,i)=>(
               <span key={t} style={{fontFamily:"'DM Mono',monospace",fontSize:10,letterSpacing:2,color:C.gold,animation:`fade 2s ${i*0.2}s infinite`}}>{t}</span>
