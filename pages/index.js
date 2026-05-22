@@ -48,7 +48,8 @@ function Photo({query,h=140}){
 }
 function HeroPhoto({query}){
   const src=usePhoto(query);
-  return <img src={src} alt="" style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",objectFit:"cover",opacity:.5}} loading="lazy"/>;
+  if(!src) return null;
+  return <img src={src} alt="" style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",objectFit:"cover",opacity:.6}} loading="eager"/>;
 }
 
 // ─── Link builders ──────────────────────────────────────────
@@ -524,21 +525,26 @@ function FileUpload({file,onFile,onClear}){
 
 // ─── PDF Generator (beautiful magazine layout) ──────────────
 async function generatePDF(plan,form,destDisplay){
-  // Pre-load photos as base64 for reliable PDF embedding
   async function toBase64(url){
-    try{const r=await fetch(url);const b=await r.blob();return await new Promise(res=>{const fr=new FileReader();fr.onloadend=()=>res(fr.result);fr.readAsDataURL(b);});}
-    catch{return null;}
+    if(!url) return null;
+    try{
+      const r=await fetch(url,{mode:'cors'});
+      if(!r.ok) return null;
+      const b=await r.blob();
+      return await new Promise(res=>{const fr=new FileReader();fr.onloadend=()=>res(fr.result);fr.readAsDataURL(b);});
+    }catch{return null;}
   }
 
-  const heroQ=`${destDisplay} city panoramic tourism`;
-  const heroUrl=photoCache[(heroQ).substring(0,60)]||`https://source.unsplash.com/1200x500/?${enc(destDisplay+" city tourism")}`;
-  const heroB64=await toBase64(heroUrl)||"";
+  // Use cached Unsplash URLs (already loaded in the app)
+  const heroQ=(destDisplay+" landmark famous tourism travel").substring(0,60);
+  const heroUrl=photoCache[heroQ]||photoCache[(destDisplay+" ville paysage panoramique").substring(0,60)];
+  const heroB64=heroUrl?await toBase64(heroUrl):null;
 
   const dayPhotos={};
   for(const d of (plan?.days||[])){
     const q=(d.unsplash_query||d.location||destDisplay||"travel").substring(0,60);
-    const url=photoCache[q]||`https://source.unsplash.com/800x300/?${enc(q)}`;
-    dayPhotos[d.num]=await toBase64(url)||"";
+    const url=photoCache[q]||photoCache[(d.location||destDisplay).substring(0,60)];
+    if(url) dayPhotos[d.num]=await toBase64(url)||null;
   }
 
   const nuits=(plan?.days?.length)||form.nuits;
@@ -546,7 +552,7 @@ async function generatePDF(plan,form,destDisplay){
 
   const dayH=rows(plan?.days,d=>`
     <div class="day-card">
-      ${dayPhotos[d.num]?`<img src="${dayPhotos[d.num]}" class="day-photo" onerror="this.style.display='none'"/>`:""}
+      ${dayPhotos[d.num]?`<img src="${dayPhotos[d.num]}" class="day-photo"/>`:`<div class="day-photo-placeholder"></div>`}
       <div class="day-header">
         <div class="day-num">Jour ${d.num}</div>
         <div class="day-title">${d.title||""}${d.location?`<span class="day-loc">📍 ${d.location}</span>`:""}</div>
@@ -632,6 +638,8 @@ a{color:#B8972E;text-decoration:none}
 /* Maps link */
 .maps-bar{text-align:center;margin:20px 0}
 .maps-btn{display:inline-block;padding:10px 24px;background:#4285F4;color:#fff!important;border-radius:6px;font-size:12px;letter-spacing:1px}
+.cover-bg-gradient{position:absolute;inset:0;background:linear-gradient(135deg,#1C1A14 0%,#2C4A3E 50%,#1A3A5C 100%);}
+.day-photo-placeholder{width:100%;height:160px;background:linear-gradient(135deg,#EDE0C4,#FAF6EE);display:block;}
 /* Print */
 @media print{body{margin:0;padding:0}.cover{height:100vh}.np{display:none}}
 /* Page content padding */
@@ -640,7 +648,7 @@ a{color:#B8972E;text-decoration:none}
 </head><body>
 <!-- COVER -->
 <div class="cover">
-  ${heroB64?`<img src="${heroB64}" class="cover-bg" onerror="this.style.display='none'"/>`:""}
+  ${heroB64?`<img src="${heroB64}" class="cover-bg"/>`:`<div class="cover-bg-gradient"></div>`}
   <div class="cover-overlay"></div>
   <div class="cover-content">
     <div class="cover-eyebrow">✦ On The Road Again ✦</div>
@@ -1074,8 +1082,9 @@ export default function SofiaPlanner(){
         <div className="result-layout" style={{display:"flex",height:"calc(100vh - 60px)"}}>
           <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",minWidth:0}}>
             {/* Hero */}
-            <div style={{position:"relative",height:130,overflow:"hidden",background:C.ink,flexShrink:0}}>
-              <HeroPhoto query={destDisplay?`${destDisplay} ville paysage panoramique`:"travel landscape"}/>
+            <div style={{position:"relative",height:160,overflow:"hidden",background:"linear-gradient(135deg,#1C1A14,#2C4A3E)",flexShrink:0}}>
+              <HeroPhoto query={destDisplay?`${destDisplay} landmark famous tourism travel`:"beautiful travel destination landscape"}/>
+              <div style={{position:"absolute",inset:0,background:"linear-gradient(to bottom, rgba(0,0,0,.1) 0%, rgba(0,0,0,.55) 100%)"}}/>
               <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:24}}>
                 <div style={{fontFamily:"'DM Mono',monospace",fontSize:8,letterSpacing:4,color:C.gold,marginBottom:8}}>✦ On The Road Again ✦</div>
                 <div style={{fontFamily:"'Playfair Display',serif",fontSize:"clamp(20px,4vw,40px)",fontWeight:900,color:"#fff",textShadow:"0 2px 8px rgba(0,0,0,.6)"}}>{destDisplay}</div>
