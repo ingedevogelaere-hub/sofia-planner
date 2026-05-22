@@ -694,7 +694,7 @@ export default function SofiaPlanner(){
   const pageTopRef=useRef(null);
   useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"});},[msgs]);
   useEffect(()=>{
-    if(genError) window.scrollTo({top:0,behavior:"smooth"});
+    if(genError && typeof window !== "undefined") window.scrollTo({top:0,behavior:"smooth"});
   },[genError]);
 
   const [form,setForm]=useState({destination:"",depart:"",dateStart:"",dateEnd:"",nuits:7,voyageurs:"",voyageurs_autre:"",budget:"",budget_global:"",styles:[],style_autre:"",hebergement:"",hebergement_autre:"",transport:"",transport_autre:"",transport_to:[],transport_to_autre:"",special:"",musts:"",avoid:"",notes:"",pmr:false});
@@ -740,11 +740,7 @@ export default function SofiaPlanner(){
       }
     }catch(err){
       setPhase("form");
-      if(!navigator.onLine){
-        setGenError({type:"network",msg:"Pas de connexion internet. Vérifie ta connexion et réessaie."});
-      } else {
-        setGenError({type:"error",msg:"Une erreur inattendue s'est produite. Réessaie dans quelques instants."});
-      }
+      setGenError({type:"error",msg:"Une erreur s'est produite. Vérifie ta connexion et réessaie dans quelques instants."});
     }
   };
 
@@ -844,7 +840,7 @@ export default function SofiaPlanner(){
                 <div style={{fontSize:13,color:"#555"}}>{genError.msg}</div>
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:6,flexShrink:0}}>
-                <button onClick={()=>{setGenError(null);setTimeout(()=>generate(),150);}} style={{background:C.rust,color:"#fff",border:"none",borderRadius:4,padding:"6px 12px",cursor:"pointer",fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:1,whiteSpace:"nowrap"}}>🔄 Réessayer</button>
+                <button onClick={generate} style={{background:C.rust,color:"#fff",border:"none",borderRadius:4,padding:"6px 12px",cursor:"pointer",fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:1,whiteSpace:"nowrap"}}>🔄 Réessayer</button>
                 <button onClick={()=>setGenError(null)} style={{background:"none",border:"none",fontSize:12,cursor:"pointer",color:"#aaa",textAlign:"center"}}>✕ Fermer</button>
               </div>
             </div>
