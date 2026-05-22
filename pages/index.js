@@ -365,101 +365,100 @@ function DateRangePicker({dateStart,dateEnd,nuits,onDateStart,onDateEnd,onNuits}
     else{onDateEnd(toDateStr(d));onNuits(Math.round((d-start)/(864e5)));setHovered(null);}
   };
 
-  const getStyle=(day)=>{
+  const getInfo=(day)=>{
     const d=new Date(curMonth.getFullYear(),curMonth.getMonth(),day);
-    const isS=start&&d.getTime()===start.getTime();
-    const isE=end&&d.getTime()===end.getTime();
+    const isS=!!(start&&d.getTime()===start.getTime());
+    const isE=!!(end&&d.getTime()===end.getTime());
     const effEnd=end||(hovered?new Date(curMonth.getFullYear(),curMonth.getMonth(),hovered):null);
-    const inR=start&&effEnd&&d>start&&d<effEnd;
+    const inR=!!(start&&effEnd&&d>start&&d<effEnd);
     const past=d<today;
     const isT=d.getTime()===today.getTime();
-    return{isS,isE,inR,past,isT};
+    return{isS,isE,inR,past,isT,d};
   };
 
   const cells=[];
   for(let i=0;i<offset;i++)cells.push(null);
   for(let d=1;d<=daysInMonth;d++)cells.push(d);
 
-  const M=["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
-  const D=["L","M","M","J","V","S","D"];
-
-  const fmt=d=>d?d.toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):null;
+  const MONTHS=["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+  const DAYS=["Lu","Ma","Me","Je","Ve","Sa","Di"];
+  const fmtDate=d=>d?d.toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):"";
 
   return(
-    <div style={{border:"1.5px solid "+C.parch,borderRadius:8,overflow:"hidden",background:"#fff"}}>
-      {/* Summary bar */}
-      <div style={{display:"flex",alignItems:"center",padding:"8px 12px",background:C.cream,borderBottom:"1px solid "+C.parch,gap:6,minHeight:38}}>
-        <span style={{fontSize:13,fontWeight:600,color:dateStart?C.rust:C.mist,fontFamily:"'DM Sans',sans-serif"}}>{dateStart?fmt(start):"Départ"}</span>
-        <span style={{color:C.parch,fontSize:12,flexShrink:0}}>→</span>
-        <span style={{fontSize:13,fontWeight:600,color:dateEnd?C.forest:dateStart?C.gold:C.mist,fontFamily:"'DM Sans',sans-serif"}}>{dateEnd?fmt(end):dateStart?"Retour ?":"Retour"}</span>
-        {dateStart&&dateEnd&&<span style={{marginLeft:"auto",fontSize:12,fontWeight:700,color:C.gold,fontFamily:"'Playfair Display',serif",flexShrink:0}}>🌙 {nuits}n</span>}
-        {(dateStart||dateEnd)&&<button onClick={()=>{onDateStart("");onDateEnd("");onNuits(7);setHovered(null);}} style={{width:20,height:20,borderRadius:"50%",border:"1.5px solid "+C.parch,background:"#fff",cursor:"pointer",fontSize:10,color:C.mist,lineHeight:1,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",marginLeft:"auto"}}>↺</button>}
+    <div style={{border:"1.5px solid "+C.parch,borderRadius:6,background:"#fff",overflow:"hidden",maxWidth:"100%"}}>
+      
+      {/* Compact header */}
+      <div style={{display:"flex",alignItems:"center",padding:"7px 10px",background:C.cream,borderBottom:"1px solid "+C.parch,gap:6}}>
+        <div style={{flex:1,display:"flex",alignItems:"center",gap:5}}>
+          <span style={{fontSize:12,fontWeight:600,color:dateStart?C.rust:"#bbb"}}>{dateStart?fmtDate(start):"Départ"}</span>
+          <span style={{color:"#ccc",fontSize:11}}>—</span>
+          <span style={{fontSize:12,fontWeight:600,color:dateEnd?C.forest:dateStart?C.gold:"#bbb"}}>{dateEnd?fmtDate(end):dateStart?"Retour ?":"Retour"}</span>
+          {dateStart&&dateEnd&&<span style={{fontSize:11,color:C.gold,fontWeight:700,marginLeft:4}}>· {nuits}n</span>}
+        </div>
+        {(dateStart||dateEnd)&&(
+          <button onClick={()=>{onDateStart("");onDateEnd("");onNuits(7);setHovered(null);}}
+            style={{background:"none",border:"1px solid #ddd",borderRadius:"50%",width:18,height:18,cursor:"pointer",fontSize:9,color:"#aaa",lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center",padding:0,flexShrink:0}}>↺</button>
+        )}
       </div>
 
-      <div style={{padding:"8px 10px"}}>
-        {/* Month nav */}
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
-          <button onClick={()=>setCurMonth(m=>new Date(m.getFullYear(),m.getMonth()-1,1))} style={{background:"none",border:"none",cursor:"pointer",color:C.gold,fontSize:14,padding:"2px 6px",lineHeight:1}}>‹</button>
-          <span style={{fontFamily:"'DM Mono',monospace",fontSize:10,letterSpacing:2,fontWeight:600,color:C.ink}}>{M[curMonth.getMonth()]} {curMonth.getFullYear()}</span>
-          <button onClick={()=>setCurMonth(m=>new Date(m.getFullYear(),m.getMonth()+1,1))} style={{background:"none",border:"none",cursor:"pointer",color:C.gold,fontSize:14,padding:"2px 6px",lineHeight:1}}>›</button>
-        </div>
+      {/* Month nav */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"5px 10px",borderBottom:"1px solid "+C.cream}}>
+        <button onClick={()=>setCurMonth(m=>new Date(m.getFullYear(),m.getMonth()-1,1))}
+          style={{background:"none",border:"none",cursor:"pointer",color:C.gold,fontSize:16,lineHeight:1,padding:"0 4px"}}>‹</button>
+        <span style={{fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:2,textTransform:"uppercase",color:C.ink,fontWeight:600}}>{MONTHS[curMonth.getMonth()]} {curMonth.getFullYear()}</span>
+        <button onClick={()=>setCurMonth(m=>new Date(m.getFullYear(),m.getMonth()+1,1))}
+          style={{background:"none",border:"none",cursor:"pointer",color:C.gold,fontSize:16,lineHeight:1,padding:"0 4px"}}>›</button>
+      </div>
 
+      {/* Calendar grid */}
+      <div style={{padding:"4px 6px 6px"}}>
         {/* Day headers */}
         <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:2}}>
-          {D.map((d,i)=><div key={i} style={{textAlign:"center",fontFamily:"'DM Mono',monospace",fontSize:8,color:C.mist,padding:"2px 0",letterSpacing:1}}>{d}</div>)}
+          {DAYS.map((d,i)=>(
+            <div key={i} style={{textAlign:"center",fontFamily:"'DM Mono',monospace",fontSize:8,color:C.mist,padding:"1px 0"}}>{d}</div>
+          ))}
         </div>
-
-        {/* Days */}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:"2px 0"}}>
+        {/* Day cells */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)"}}>
           {cells.map((day,i)=>{
-            if(!day)return<div key={i}/>;
-            const{isS,isE,inR,past,isT}=getStyle(day);
-            // Range background spans full cell width
-            const rangeStyle=inR?{background:"#FDE8E4"}:{};
-            const startCapStyle=isS?{background:"#FDE8E4",borderRadius:"0"}:{};
-            const endCapStyle=isE?{background:"#FDE8E4",borderRadius:"0"}:{};
-            // First/last in row: round the range bg
-            const col=(i%7);
-            const isFirstInRow=col===0;
-            const isLastInRow=col===6;
-            const dotStyle={
-              width:28,height:28,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",position:"relative",zIndex:1,
-              background:isS||isE?C.rust:"transparent",
-              color:isS||isE?"#fff":past?"#ccc":isT?C.gold:C.ink,
-              fontWeight:isS||isE?700:isT?600:400,
-              fontSize:12,
-              fontFamily:"'DM Sans',sans-serif",
-              outline:isT&&!isS&&!isE?"2px solid "+C.gold:"none",
-              outlineOffset:"1px",
-            };
+            if(!day)return<div key={i} style={{height:26}}/>;
+            const{isS,isE,inR,past,isT}=getInfo(day);
+            const col=i%7;
+            // Range background layer
+            const rangeBg=isS&&end?'linear-gradient(to right, transparent 50%, #FDE8E4 50%)':
+                          isE&&start?'linear-gradient(to left, transparent 50%, #FDE8E4 50%)':
+                          inR?'#FDE8E4':'transparent';
             return(
               <div key={i} onClick={()=>!past&&click(day)}
                 onMouseEnter={()=>start&&!end&&!past&&setHovered(day)}
                 onMouseLeave={()=>setHovered(null)}
-                style={{
-                  position:"relative",cursor:past?"default":"pointer",
-                  padding:"1px 0",
-                  background:inR?"#FDE8E4":isS&&end?"#FDE8E4":isE&&start?"#FDE8E4":"transparent",
-                  borderRadius:isS?"50% 0 0 50%":isE?"0 50% 50% 0":"0",
-                  // Clip range edges at row boundaries
-                  ...(inR&&isFirstInRow?{borderRadius:"50% 0 0 50%"}:{}),
-                  ...(inR&&isLastInRow?{borderRadius:"0 50% 50% 0"}:{}),
+                style={{height:26,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",cursor:past?"default":"pointer",background:rangeBg}}>
+                <div style={{
+                  width:24,height:24,borderRadius:"50%",
+                  display:"flex",alignItems:"center",justifyContent:"center",
+                  position:"relative",zIndex:1,
+                  background:isS||isE?C.rust:"transparent",
+                  color:isS||isE?"#fff":past?"#ccc":isT?C.gold:C.ink,
+                  fontFamily:"'DM Sans',sans-serif",fontSize:11,
+                  fontWeight:isS||isE?700:isT?600:400,
+                  boxShadow:isT&&!isS&&!isE?"0 0 0 1.5px "+C.gold:"none",
                 }}>
-                <div style={dotStyle}>{day}</div>
+                  {day}
+                </div>
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* Manual nights when no dates */}
+      {/* Manual nights - only if no start date */}
       {!dateStart&&(
-        <div style={{padding:"6px 12px 8px",borderTop:"1px solid "+C.parch,display:"flex",alignItems:"center",gap:8}}>
-          <span style={{fontFamily:"'DM Mono',monospace",fontSize:8,color:C.mist,letterSpacing:1,textTransform:"uppercase"}}>Ou nb de nuits</span>
-          <button onClick={()=>onNuits(Math.max(1,nuits-1))} style={{width:22,height:22,border:"1.5px solid "+C.parch,borderRadius:"50%",background:"#fff",fontSize:14,cursor:"pointer",lineHeight:1,flexShrink:0}}>−</button>
-          <span style={{fontFamily:"'Playfair Display',serif",fontSize:16,fontWeight:700,color:C.gold,minWidth:24,textAlign:"center"}}>{nuits}</span>
-          <button onClick={()=>onNuits(Math.min(90,nuits+1))} style={{width:22,height:22,border:"1.5px solid "+C.parch,borderRadius:"50%",background:"#fff",fontSize:14,cursor:"pointer",lineHeight:1,flexShrink:0}}>+</button>
-          <span style={{fontSize:11,color:C.mist}}>nuits</span>
+        <div style={{padding:"5px 10px 6px",borderTop:"1px solid "+C.parch,display:"flex",alignItems:"center",gap:6}}>
+          <span style={{fontFamily:"'DM Mono',monospace",fontSize:8,color:"#bbb",letterSpacing:1}}>OU</span>
+          <button onClick={()=>onNuits(Math.max(1,nuits-1))} style={{width:20,height:20,border:"1px solid "+C.parch,borderRadius:"50%",background:"#fff",fontSize:13,cursor:"pointer",lineHeight:1,color:C.ink}}>−</button>
+          <span style={{fontSize:14,fontWeight:700,color:C.gold,minWidth:20,textAlign:"center",fontFamily:"'Playfair Display',serif"}}>{nuits}</span>
+          <button onClick={()=>onNuits(Math.min(90,nuits+1))} style={{width:20,height:20,border:"1px solid "+C.parch,borderRadius:"50%",background:"#fff",fontSize:13,cursor:"pointer",lineHeight:1,color:C.ink}}>+</button>
+          <span style={{fontSize:11,color:"#bbb"}}>nuits</span>
         </div>
       )}
     </div>
@@ -845,7 +844,7 @@ export default function SofiaPlanner(){
                 <div style={{fontSize:13,color:"#555"}}>{genError.msg}</div>
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:6,flexShrink:0}}>
-                <button onClick={()=>{setGenError(null);generate();}} style={{background:C.rust,color:"#fff",border:"none",borderRadius:4,padding:"6px 12px",cursor:"pointer",fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:1,whiteSpace:"nowrap"}}>🔄 Réessayer</button>
+                <button onClick={()=>{setGenError(null);setTimeout(()=>generate(),150);}} style={{background:C.rust,color:"#fff",border:"none",borderRadius:4,padding:"6px 12px",cursor:"pointer",fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:1,whiteSpace:"nowrap"}}>🔄 Réessayer</button>
                 <button onClick={()=>setGenError(null)} style={{background:"none",border:"none",fontSize:12,cursor:"pointer",color:"#aaa",textAlign:"center"}}>✕ Fermer</button>
               </div>
             </div>
