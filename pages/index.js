@@ -339,75 +339,129 @@ function PackingSection({packing}){
   </div>);
 }
 
-// ─── Date Range Picker ─────────────────────────────────────────
+// ─── Date Range Picker ─────────────────────────────────────
 function parseLocalDate(str){if(!str)return null;const [y,m,d]=str.split('-').map(Number);return new Date(y,m-1,d);}
 function toDateStr(d){if(!d)return"";return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 
 function DateRangePicker({dateStart,dateEnd,nuits,onDateStart,onDateEnd,onNuits}){
   const today=new Date();today.setHours(0,0,0,0);
-  const [curMonth,setCurMonth]=useState(()=>{const d=dateStart?parseLocalDate(dateStart):new Date();return new Date(d.getFullYear(),d.getMonth(),1);});
+  const [curMonth,setCurMonth]=useState(()=>{
+    const d=dateStart?parseLocalDate(dateStart):new Date();
+    return new Date(d.getFullYear(),d.getMonth(),1);
+  });
   const [hovered,setHovered]=useState(null);
-  const start=parseLocalDate(dateStart);const end=parseLocalDate(dateEnd);
+  const start=parseLocalDate(dateStart);
+  const end=parseLocalDate(dateEnd);
+
   const daysInMonth=new Date(curMonth.getFullYear(),curMonth.getMonth()+1,0).getDate();
   const firstDay=new Date(curMonth.getFullYear(),curMonth.getMonth(),1).getDay();
-  const startOffset=(firstDay+6)%7;
-  const handleDay=(day)=>{
-    const clicked=new Date(curMonth.getFullYear(),curMonth.getMonth(),day);
-    if(clicked<today)return;
-    if(!start||(start&&end)){onDateStart(toDateStr(clicked));onDateEnd("");setHovered(null);}
-    else{if(clicked<=start){onDateStart(toDateStr(clicked));onDateEnd("");setHovered(null);}else{const nights=Math.round((clicked-start)/(1000*60*60*24));onDateEnd(toDateStr(clicked));onNuits(nights);setHovered(null);}}
+  const offset=(firstDay+6)%7;
+
+  const click=(day)=>{
+    const d=new Date(curMonth.getFullYear(),curMonth.getMonth(),day);
+    if(d<today)return;
+    if(!start||(start&&end)){onDateStart(toDateStr(d));onDateEnd("");setHovered(null);}
+    else if(d<=start){onDateStart(toDateStr(d));onDateEnd("");setHovered(null);}
+    else{onDateEnd(toDateStr(d));onNuits(Math.round((d-start)/(864e5)));setHovered(null);}
   };
-  const reset=()=>{onDateStart("");onDateEnd("");onNuits(7);setHovered(null);};
-  const getStatus=(day)=>{
+
+  const getStyle=(day)=>{
     const d=new Date(curMonth.getFullYear(),curMonth.getMonth(),day);
     const isS=start&&d.getTime()===start.getTime();
     const isE=end&&d.getTime()===end.getTime();
     const effEnd=end||(hovered?new Date(curMonth.getFullYear(),curMonth.getMonth(),hovered):null);
-    const inRange=start&&effEnd&&d>start&&d<effEnd;
-    const isPast=d<today;const isToday=d.getTime()===today.getTime();
-    return{isS,isE,inRange,isPast,isToday};
+    const inR=start&&effEnd&&d>start&&d<effEnd;
+    const past=d<today;
+    const isT=d.getTime()===today.getTime();
+    return{isS,isE,inR,past,isT};
   };
-  const cells=[];for(let i=0;i<startOffset;i++)cells.push(null);for(let d=1;d<=daysInMonth;d++)cells.push(d);
-  const months=["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
-  const days=["Lu","Ma","Me","Je","Ve","Sa","Di"];
-  const fmtShort=d=>d?d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}):null;
+
+  const cells=[];
+  for(let i=0;i<offset;i++)cells.push(null);
+  for(let d=1;d<=daysInMonth;d++)cells.push(d);
+
+  const M=["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
+  const D=["L","M","M","J","V","S","D"];
+
+  const fmt=d=>d?d.toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):null;
+
   return(
-    <div style={{background:"#fff",border:"1.5px solid "+C.parch,borderRadius:8,overflow:"hidden"}}>
-      <div style={{display:"flex",alignItems:"center",padding:"10px 14px",background:C.cream,borderBottom:"1px solid "+C.parch,gap:8}}>
-        <span style={{fontSize:11,color:C.mist,fontFamily:"'DM Mono',monospace",flexShrink:0}}>📅</span>
-        <span style={{fontSize:13,fontWeight:dateStart?600:400,color:dateStart?C.rust:C.mist}}>{dateStart?fmtShort(start):"Départ"}</span>
-        <span style={{color:C.parch,fontSize:14}}>→</span>
-        <span style={{fontSize:13,fontWeight:dateEnd?600:400,color:dateEnd?C.forest:dateStart?C.gold:C.mist}}>{dateEnd?fmtShort(end):dateStart?"Cliquez retour":"Retour"}</span>
-        {dateStart&&dateEnd&&<span style={{marginLeft:"auto",fontFamily:"'Playfair Display',serif",fontSize:14,fontWeight:700,color:C.gold}}>🌙 {nuits} nuits</span>}
-        {(dateStart||dateEnd)&&<button onClick={reset} title="Réinitialiser" style={{width:26,height:26,borderRadius:"50%",border:"1.5px solid "+C.parch,background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:C.mist,flexShrink:0,lineHeight:1}}>↺</button>}
+    <div style={{border:"1.5px solid "+C.parch,borderRadius:8,overflow:"hidden",background:"#fff"}}>
+      {/* Summary bar */}
+      <div style={{display:"flex",alignItems:"center",padding:"8px 12px",background:C.cream,borderBottom:"1px solid "+C.parch,gap:6,minHeight:38}}>
+        <span style={{fontSize:13,fontWeight:600,color:dateStart?C.rust:C.mist,fontFamily:"'DM Sans',sans-serif"}}>{dateStart?fmt(start):"Départ"}</span>
+        <span style={{color:C.parch,fontSize:12,flexShrink:0}}>→</span>
+        <span style={{fontSize:13,fontWeight:600,color:dateEnd?C.forest:dateStart?C.gold:C.mist,fontFamily:"'DM Sans',sans-serif"}}>{dateEnd?fmt(end):dateStart?"Retour ?":"Retour"}</span>
+        {dateStart&&dateEnd&&<span style={{marginLeft:"auto",fontSize:12,fontWeight:700,color:C.gold,fontFamily:"'Playfair Display',serif",flexShrink:0}}>🌙 {nuits}n</span>}
+        {(dateStart||dateEnd)&&<button onClick={()=>{onDateStart("");onDateEnd("");onNuits(7);setHovered(null);}} style={{width:20,height:20,borderRadius:"50%",border:"1.5px solid "+C.parch,background:"#fff",cursor:"pointer",fontSize:10,color:C.mist,lineHeight:1,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",marginLeft:"auto"}}>↺</button>}
       </div>
-      <div style={{padding:"12px 14px"}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-          <button onClick={()=>setCurMonth(m=>new Date(m.getFullYear(),m.getMonth()-1,1))} style={{background:"none",border:"1px solid "+C.parch,borderRadius:4,cursor:"pointer",padding:"2px 8px",fontSize:14,color:C.gold,lineHeight:1}}>‹</button>
-          <span style={{fontFamily:"'DM Mono',monospace",fontSize:10,letterSpacing:2,textTransform:"uppercase",fontWeight:600}}>{months[curMonth.getMonth()]} {curMonth.getFullYear()}</span>
-          <button onClick={()=>setCurMonth(m=>new Date(m.getFullYear(),m.getMonth()+1,1))} style={{background:"none",border:"1px solid "+C.parch,borderRadius:4,cursor:"pointer",padding:"2px 8px",fontSize:14,color:C.gold,lineHeight:1}}>›</button>
+
+      <div style={{padding:"8px 10px"}}>
+        {/* Month nav */}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+          <button onClick={()=>setCurMonth(m=>new Date(m.getFullYear(),m.getMonth()-1,1))} style={{background:"none",border:"none",cursor:"pointer",color:C.gold,fontSize:14,padding:"2px 6px",lineHeight:1}}>‹</button>
+          <span style={{fontFamily:"'DM Mono',monospace",fontSize:10,letterSpacing:2,fontWeight:600,color:C.ink}}>{M[curMonth.getMonth()]} {curMonth.getFullYear()}</span>
+          <button onClick={()=>setCurMonth(m=>new Date(m.getFullYear(),m.getMonth()+1,1))} style={{background:"none",border:"none",cursor:"pointer",color:C.gold,fontSize:14,padding:"2px 6px",lineHeight:1}}>›</button>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:1,marginBottom:3}}>
-          {days.map(d=><div key={d} style={{textAlign:"center",fontFamily:"'DM Mono',monospace",fontSize:8,color:C.mist,padding:"3px 0",letterSpacing:1}}>{d}</div>)}
+
+        {/* Day headers */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:2}}>
+          {D.map((d,i)=><div key={i} style={{textAlign:"center",fontFamily:"'DM Mono',monospace",fontSize:8,color:C.mist,padding:"2px 0",letterSpacing:1}}>{d}</div>)}
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:1}}>
+
+        {/* Days */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:"2px 0"}}>
           {cells.map((day,i)=>{
             if(!day)return<div key={i}/>;
-            const{isS,isE,inRange,isPast,isToday}=getStatus(day);
-            return(<button key={i} onClick={()=>handleDay(day)} onMouseEnter={()=>start&&!end&&!isPast&&setHovered(day)} onMouseLeave={()=>setHovered(null)}
-              style={{padding:"5px 0",textAlign:"center",border:"none",borderRadius:isS?"50% 0 0 50%":isE?"0 50% 50% 0":"2px",background:isS||isE?C.rust:inRange?"#fde8e4":"transparent",color:isS||isE?"#fff":isPast?"#d0d0d0":isToday?C.gold:C.ink,fontFamily:"'DM Sans',sans-serif",fontSize:12,cursor:isPast?"default":"pointer",fontWeight:isS||isE?700:isToday?600:400,outline:isToday&&!isS&&!isE?"1.5px solid "+C.gold:"none",outlineOffset:"1px",transition:"background .1s"}}>
-              {day}
-            </button>);
+            const{isS,isE,inR,past,isT}=getStyle(day);
+            // Range background spans full cell width
+            const rangeStyle=inR?{background:"#FDE8E4"}:{};
+            const startCapStyle=isS?{background:"#FDE8E4",borderRadius:"0"}:{};
+            const endCapStyle=isE?{background:"#FDE8E4",borderRadius:"0"}:{};
+            // First/last in row: round the range bg
+            const col=(i%7);
+            const isFirstInRow=col===0;
+            const isLastInRow=col===6;
+            const dotStyle={
+              width:28,height:28,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",position:"relative",zIndex:1,
+              background:isS||isE?C.rust:"transparent",
+              color:isS||isE?"#fff":past?"#ccc":isT?C.gold:C.ink,
+              fontWeight:isS||isE?700:isT?600:400,
+              fontSize:12,
+              fontFamily:"'DM Sans',sans-serif",
+              outline:isT&&!isS&&!isE?"2px solid "+C.gold:"none",
+              outlineOffset:"1px",
+            };
+            return(
+              <div key={i} onClick={()=>!past&&click(day)}
+                onMouseEnter={()=>start&&!end&&!past&&setHovered(day)}
+                onMouseLeave={()=>setHovered(null)}
+                style={{
+                  position:"relative",cursor:past?"default":"pointer",
+                  padding:"1px 0",
+                  background:inR?"#FDE8E4":isS&&end?"#FDE8E4":isE&&start?"#FDE8E4":"transparent",
+                  borderRadius:isS?"50% 0 0 50%":isE?"0 50% 50% 0":"0",
+                  // Clip range edges at row boundaries
+                  ...(inR&&isFirstInRow?{borderRadius:"50% 0 0 50%"}:{}),
+                  ...(inR&&isLastInRow?{borderRadius:"0 50% 50% 0"}:{}),
+                }}>
+                <div style={dotStyle}>{day}</div>
+              </div>
+            );
           })}
         </div>
       </div>
-      {!dateStart&&(<div style={{padding:"10px 14px",borderTop:"1px solid "+C.parch,display:"flex",alignItems:"center",gap:10}}>
-        <span style={{fontFamily:"'DM Mono',monospace",fontSize:9,letterSpacing:1,color:C.mist,textTransform:"uppercase"}}>Ou combien de nuits ?</span>
-        <button onClick={()=>onNuits(Math.max(1,nuits-1))} style={{width:28,height:28,border:"1.5px solid "+C.parch,borderRadius:"50%",background:"#fff",fontSize:16,cursor:"pointer",lineHeight:1}}>−</button>
-        <span style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:700,color:C.gold,minWidth:32,textAlign:"center"}}>{nuits}</span>
-        <button onClick={()=>onNuits(Math.min(90,nuits+1))} style={{width:28,height:28,border:"1.5px solid "+C.parch,borderRadius:"50%",background:"#fff",fontSize:16,cursor:"pointer",lineHeight:1}}>+</button>
-        <span style={{fontSize:12,color:C.mist}}>nuits</span>
-      </div>)}
+
+      {/* Manual nights when no dates */}
+      {!dateStart&&(
+        <div style={{padding:"6px 12px 8px",borderTop:"1px solid "+C.parch,display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontFamily:"'DM Mono',monospace",fontSize:8,color:C.mist,letterSpacing:1,textTransform:"uppercase"}}>Ou nb de nuits</span>
+          <button onClick={()=>onNuits(Math.max(1,nuits-1))} style={{width:22,height:22,border:"1.5px solid "+C.parch,borderRadius:"50%",background:"#fff",fontSize:14,cursor:"pointer",lineHeight:1,flexShrink:0}}>−</button>
+          <span style={{fontFamily:"'Playfair Display',serif",fontSize:16,fontWeight:700,color:C.gold,minWidth:24,textAlign:"center"}}>{nuits}</span>
+          <button onClick={()=>onNuits(Math.min(90,nuits+1))} style={{width:22,height:22,border:"1.5px solid "+C.parch,borderRadius:"50%",background:"#fff",fontSize:14,cursor:"pointer",lineHeight:1,flexShrink:0}}>+</button>
+          <span style={{fontSize:11,color:C.mist}}>nuits</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -638,9 +692,13 @@ export default function SofiaPlanner(){
   const [outingDayFilter,setOutingDayFilter]=useState(null);
   const [uploadedFile,setUploadedFile]=useState(null);
   const bottomRef=useRef(null);
+  const pageTopRef=useRef(null);
   useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"});},[msgs]);
+  useEffect(()=>{
+    if(genError) window.scrollTo({top:0,behavior:"smooth"});
+  },[genError]);
 
-  const [form,setForm]=useState({destination:"",depart:"",dateStart:"",dateEnd:"",nuits:7,voyageurs:"",voyageurs_autre:"",budget:"",budget_global:"",styles:[],style_autre:"",hebergement:"",hebergement_autre:"",transport:"",transport_autre:"",transport_to:[],transport_to_autre:"",special:"",musts:"",avoid:"",notes:""});
+  const [form,setForm]=useState({destination:"",depart:"",dateStart:"",dateEnd:"",nuits:7,voyageurs:"",voyageurs_autre:"",budget:"",budget_global:"",styles:[],style_autre:"",hebergement:"",hebergement_autre:"",transport:"",transport_autre:"",transport_to:[],transport_to_autre:"",special:"",musts:"",avoid:"",notes:"",pmr:false});
   const setF=(k,v)=>setForm(f=>({...f,[k]:v}));
   const toggleArr=(k,v)=>setF(k,form[k].includes(v)?form[k].filter(x=>x!==v):[...form[k],v]);
 
@@ -856,11 +914,30 @@ export default function SofiaPlanner(){
                   </div>
                   {errors.hebergement&&<div style={{fontSize:11,color:C.rust,marginTop:4}}>⚠️ {errors.hebergement}</div>}
                 </div>
-                <div><span style={lbl}>Transport sur place</span>
-                  <div style={{display:"flex",flexDirection:"column",gap:5}}>
-                    {TRANSPORTS_LOCAL.map(t=><button key={t} onClick={()=>setF("transport",t)} style={selBtn(form.transport===t,C.navy)}>{t}</button>)}
-                    {form.transport==="Autre"?<div style={inpBox}><input autoFocus style={inp} value={form.transport_autre} onChange={e=>setF("transport_autre",e.target.value)} placeholder="Précise…"/></div>:<button onClick={()=>setF("transport","Autre")} style={selBtn(false)}>✏️ Autre</button>}
+                <div>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:7}}>
+                    <span style={lbl}>Transport sur place</span>
+                    <button onClick={()=>setF("transport",form.transport==="sofia"?"":"sofia")}
+                      style={{padding:"4px 10px",border:"1.5px solid",borderRadius:100,fontSize:10,cursor:"pointer",fontFamily:"'DM Mono',monospace",letterSpacing:1,transition:"all .15s",
+                        background:form.transport==="sofia"?"linear-gradient(135deg,#B8972E,#C1440E)":"transparent",
+                        borderColor:form.transport==="sofia"?C.gold:C.parch,
+                        color:form.transport==="sofia"?"#fff":C.gold,
+                        fontWeight:form.transport==="sofia"?700:400
+                      }}>
+                      {form.transport==="sofia"?"✨ Sofia choisit":"✨ Sofia choisit pour moi"}
+                    </button>
                   </div>
+                  {form.transport==="sofia"?(
+                    <div style={{padding:"12px 14px",background:"linear-gradient(135deg,#FDF8ED,#FFF9F0)",border:"1.5px solid "+C.gold,borderRadius:6,fontSize:12,color:"#4a3800"}}>
+                      <div style={{fontWeight:700,marginBottom:4}}>✨ Sofia s'en charge !</div>
+                      <div style={{color:C.mist}}>Sofia analysera ta destination, ton style et ton profil pour recommander le transport idéal dans ton plan.</div>
+                    </div>
+                  ):(
+                    <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                      {TRANSPORTS_LOCAL.map(t=><button key={t} onClick={()=>setF("transport",t)} style={selBtn(form.transport===t,C.navy)}>{t}</button>)}
+                      {form.transport==="Autre"?<div style={inpBox}><input autoFocus style={inp} value={form.transport_autre} onChange={e=>setF("transport_autre",e.target.value)} placeholder="Précise…"/></div>:<button onClick={()=>setF("transport","Autre")} style={selBtn(false)}>✏️ Autre</button>}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -872,6 +949,36 @@ export default function SofiaPlanner(){
                 <div><span style={lbl}>À éviter</span><div style={inpBox}><textarea style={{...inp,height:80,resize:"none",padding:"10px 14px"}} value={form.avoid} onChange={e=>setF("avoid",e.target.value)} placeholder="Pas trop touristique…"/></div></div>
                 <div><span style={lbl}>Besoins spéciaux</span><div style={inpBox}><textarea style={{...inp,height:70,resize:"none",padding:"10px 14px"}} value={form.special} onChange={e=>setF("special",e.target.value)} placeholder="Végétarien, allergie, mobilité réduite…"/></div></div>
                 <div><span style={lbl}>Autres informations</span><div style={inpBox}><textarea style={{...inp,height:70,resize:"none",padding:"10px 14px"}} value={form.notes} onChange={e=>setF("notes",e.target.value)} placeholder="Passionné de plongée, fan de gastronomie…"/></div></div>
+              </div>
+            </div>
+            {/* PMR Toggle */}
+            <div style={{marginBottom:16,padding:"14px 16px",background:form.pmr?"linear-gradient(135deg,#e8f4fd,#e3f2fd)":C.cream,border:"1.5px solid "+(form.pmr?"#1565c0":C.parch),borderRadius:6,transition:"all .2s"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
+                <div style={{flex:1}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:form.pmr?6:0}}>
+                    <span style={{fontSize:20}}>♿</span>
+                    <div>
+                      <div style={{fontFamily:"'Playfair Display',serif",fontSize:14,fontWeight:700,color:form.pmr?"#1565c0":C.ink}}>Accessibilité / Mobilité réduite</div>
+                      <div style={{fontSize:11,color:C.mist}}>Sofia adapte tout le plan : hébergements, restos, activités, transports</div>
+                    </div>
+                  </div>
+                  {form.pmr&&(
+                    <div style={{fontSize:12,color:"#1565c0",lineHeight:1.6,marginLeft:28}}>
+                      ✓ Hébergements accessibles PMR<br/>
+                      ✓ Restaurants de plain-pied<br/>
+                      ✓ Activités adaptées (pas de randonnées difficiles)<br/>
+                      ✓ Transports accessibles (bus à plancher bas, taxis PMR)
+                    </div>
+                  )}
+                </div>
+                <button onClick={()=>setF("pmr",!form.pmr)}
+                  style={{padding:"8px 16px",border:"1.5px solid",borderRadius:100,cursor:"pointer",fontFamily:"'DM Mono',monospace",fontSize:10,letterSpacing:1,fontWeight:700,flexShrink:0,transition:"all .2s",
+                    background:form.pmr?"#1565c0":"transparent",
+                    borderColor:form.pmr?"#1565c0":"#1565c0",
+                    color:form.pmr?"#fff":"#1565c0"
+                  }}>
+                  {form.pmr?"✓ ACTIVÉ":"Activer"}
+                </button>
               </div>
             </div>
             <button onClick={generate} style={{width:"100%",padding:"16px",background:C.rust,color:"#fff",border:"none",borderRadius:6,fontFamily:"'Playfair Display',serif",fontStyle:"italic",fontSize:19,cursor:"pointer"}}>
