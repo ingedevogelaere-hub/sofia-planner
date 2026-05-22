@@ -123,7 +123,7 @@ Transport aller: ${Array.isArray(formData.transport_to)?formData.transport_to.jo
 Dates: ${formData.dateStart||"Flexibles"} → ${formData.dateEnd||endDate} (${formData.nuits} nuits)
 Voyageurs: ${formData.voyageurs==="Autre"?formData.voyageurs_autre:formData.voyageurs||"Non précisé"}
 Budget: ${formData.budget==="Budget global"?formData.budget_global:formData.budget||"Non précisé"}
-Style: ${(formData.styles||[]).join(", ")||"Varié"}${formData.style_autre?", "+formData.style_autre:""}
+Style: ${(formData.styles||[]).includes("__sofia__")?"Sofia doit recommander le style idéal pour cette destination":(formData.styles||[]).filter(s=>s!=="__sofia__").join(", ")||"Varié"}${formData.style_autre?", "+formData.style_autre:""}
 Hébergement: ${formData.hebergement==="sofia"?"Sofia recommande le meilleur":formData.hebergement==="Autre"?formData.hebergement_autre:formData.hebergement||"Non précisé"}
 Transport sur place: ${transport}
 Besoins: ${formData.special||"Aucun"}
