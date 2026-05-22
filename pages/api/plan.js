@@ -81,7 +81,7 @@ export default async function handler(req, res) {
 "remarkable_sites":[{"name":"Nom officiel","label":"UNESCO/Réserve/Parc National/Grand Site","location":"Adresse courte","description":"Ce qu'on y voit","website":"URL officielle si connue","coords":[lat,lon],"unsplash_query":"mots-clés précis pour trouver une photo (ex: Calanques de Piana Corse falaises rouges)"}],
 "accommodations":[{"name":"Nom exact de l'hôtel/gîte","type":"Type","location":"Adresse","price":"Prix/nuit","why":"Pourquoi ce choix","website":"Site officiel","coords":[lat,lon],"unsplash_query":"mots-clés photo (ex: hôtel Porto Vecchio Corse mer)"}],
 "restaurants":[{"name":"Nom exact","cuisine":"Type","specialty":"Plat signature","price":"€","tip":"Conseil","address":"Adresse complète","website":"Site si connu","coords":[lat,lon]}],
-"outings":[{"name":"Nom de l'activité ou randonnée","type":"randonnée|activité|excursion|sport","subtype":"description courte du type (ex: sentier côtier, plongée, kayak, visite guidée)","distance":"X km si randonnée","duration":"Durée","difficulty":"Facile/Moyen/Difficile si randonnée","highlights":"Ce qu'on voit/vit","start_point":"Point de départ précis","transport_from_center":"Comment y aller depuis le centre","price":"Prix si activité payante","address":"Adresse si lieu fixe","website":"Site ou lien réservation","coords":[lat,lon],"unsplash_query":"mots-clés photo précis (ex: randonnée Cap Corse sentier littoral)"}],
+"outings":[{"name":"Nom de l'activité ou randonnée","type":"randonnée|activité|excursion|sport","subtype":"description courte du type (ex: sentier côtier, plongée, kayak, visite guidée)","day_num":1,"distance":"X km si randonnée","duration":"Durée","difficulty":"Facile/Moyen/Difficile si randonnée","highlights":"Ce qu'on voit/vit","start_point":"Point de départ précis","transport_from_center":"Comment y aller depuis le centre","price":"Prix si activité payante","address":"Adresse si lieu fixe","website":"Site ou lien réservation","coords":[lat,lon],"unsplash_query":"mots-clés photo précis (ex: randonnée Cap Corse sentier littoral)"}],
 "agenda":[{"type":"positive","name":"Événement","date":"Date exacte","description":"Détails pratiques"},{"type":"negative","name":"Perturbation","date":"Dates","description":"Impact sur le voyage"},{"type":"info","name":"Info pratique","date":"Période","description":"Ce qu'il faut savoir"}],
 "tourism_office":{"name":"Nom complet de l'office","website":"URL OFFICIELLE (ex: visit-corsica.com, corsica-isula.fr)","address":"Adresse","phone":"Téléphone"},
 "tips":["conseil1","conseil2","conseil3","conseil4","conseil5"],
@@ -108,6 +108,7 @@ RÈGLE pour le champ "unsplash_query": mettre des mots-clés précis et visuels 
 Format JSON: ${FMT}
 Règles additionnelles:
 - "outings" = fusion des randonnées ET activités en une seule liste (type: randonnée ou activité)
+- Pour chaque outing, le champ "day_num" indique à quel jour il correspond (1, 2, 3...). Distribue les activités intelligemment entre les jours.
 - Génère le bon nombre de jours selon les nuits
 - Coordonnées GPS réelles
 - Agenda avec événements réels aux dates du voyage
