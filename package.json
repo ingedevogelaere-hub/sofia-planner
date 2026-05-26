@@ -1,5 +1,5 @@
 {
-  "description": "Sofia Planner — application de planification voyage IA. Stack Next.js 14, React, Vercel. IA : Claude Haiku via Anthropic API."
+  "description": "Sofia Planner — application de planification voyage IA. Stack Next.js 14, React, Vercel. IA : Claude Haiku via Anthropic API.",
   "name": "sofia-planner",
   "version": "5.0.0",
   "scripts": {
