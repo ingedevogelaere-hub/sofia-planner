@@ -156,11 +156,11 @@ export default function SofiaPlanner() {
       `}</style>
 
       {/* HEADER */}
-      <div className="np" style={{ background:C.ink, padding:"12px 16px", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:100, boxShadow:"0 2px 8px rgba(0,0,0,.4)" }}>
+      <div className="np" style={{ background:C.forest, padding:"12px 16px", display:"flex", alignItems:"center", gap:12, position:"sticky", top:0, zIndex:100, boxShadow:"0 2px 8px rgba(0,0,0,.25)" }}>
         <div style={{ width:36, height:36, borderRadius:"50%", background:"linear-gradient(135deg,#B8972E,#C1440E)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, flexShrink:0 }}>🌍</div>
         <div style={{ flex:1 }}>
           <div style={{ fontFamily:"'Playfair Display',serif", fontSize:17, fontWeight:700, color:"#FAF6EE" }}>Sofia <em style={{ color:C.gold }}>Planner</em></div>
-          <div style={{ fontFamily:"'DM Mono',monospace", fontSize:7, letterSpacing:2, color:"#555" }}>On The Road Again</div>
+          <div style={{ fontFamily:"'DM Mono',monospace", fontSize:7, letterSpacing:2, color:"#8fb8a8" }}>On The Road Again</div>
         </div>
         {phase === "result" && (
           <div style={{ display:"flex", gap:6, flexShrink:0 }}>
@@ -409,7 +409,7 @@ export default function SofiaPlanner() {
         <div className="result-layout" style={{ display:"flex", height:"calc(100vh - 60px)" }}>
           <div style={{ flex:1, overflowY:"auto", display:"flex", flexDirection:"column", minWidth:0 }}>
             {/* Hero */}
-            <div style={{ position:"relative", height:160, overflow:"hidden", background:"linear-gradient(135deg,#1C1A14,#2C4A3E)", flexShrink:0 }}>
+            <div style={{ position:"relative", height:160, overflow:"hidden", background:"linear-gradient(135deg,#2C4A3E,#1A3A5C)", flexShrink:0 }}>
               <HeroPhoto query={destDisplay ? `${destDisplay} landmark famous tourism travel` : "beautiful travel destination landscape"} />
               <div style={{ position:"absolute", inset:0, background:"linear-gradient(to bottom, rgba(0,0,0,.1) 0%, rgba(0,0,0,.55) 100%)" }} />
               <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", textAlign:"center", padding:24 }}>
