@@ -1,3 +1,17 @@
+/**
+ * pages/index.js
+ * ─────────────────────────────────────────────────────────
+ * Page principale et composant racine de Sofia Planner.
+ * Gère les trois phases de l'application :
+ *   1. "form"    — formulaire de création du voyage (destination,
+ *                   dates, budget, style, hébergement, transport…)
+ *   2. "loading" — écran d'attente pendant la génération IA
+ *   3. "result"  — affichage du plan avec onglets (itinéraire,
+ *                   agenda, incontournables, hébergements, restos,
+ *                   sorties, conseils, budget, valise) + chat Sofia.
+ * Importe tous les composants, hooks et utilitaires du projet.
+ */
+
 import Head from "next/head";
 import { useState, useRef, useEffect } from "react";
 
