@@ -1,3 +1,15 @@
+/**
+ * components/ui.js
+ * ─────────────────────────────────────────────────────────
+ * Composants UI atomiques réutilisables dans toute l'application.
+ * Photo       : image Unsplash avec hauteur configurable.
+ * HeroPhoto   : image en position absolute pour les bandeaux.
+ * Chip        : badge/étiquette colorée inline.
+ * LinkBar     : barre de liens externes (Booking, Maps, etc.).
+ * NoteField   : champ de note personnel dépliable par item.
+ * CityInput   : champ texte avec autocomplétion ville (Nominatim OSM).
+ */
+
 import { useState, useRef, useEffect } from "react";
 import { C, enc } from "../lib/constants";
 import { buildLinks } from "../lib/links";
