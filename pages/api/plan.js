@@ -1,3 +1,14 @@
+/**
+ * pages/api/plan.js
+ * ─────────────────────────────────────────────────────────
+ * Route API Next.js — point d'entrée unique vers Claude (Anthropic).
+ * Deux modes selon le payload reçu :
+ *   - "form" : génère un plan JSON complet depuis le formulaire
+ *              (destination, dates, budget, style, fichier joint…)
+ *   - "chat" : répond à un message utilisateur, peut retourner
+ *              un plan mis à jour (JSON) ou une réponse texte.
+ * Modèle utilisé : claude-haiku-4-5. Retry automatique si surchargé.
+ */
 export const config = { api: { bodyParser: { sizeLimit: '10mb' } } };
 
 function extractJSON(text) {
