@@ -1,3 +1,15 @@
+/**
+ * components/sections.js
+ * ─────────────────────────────────────────────────────────
+ * Sections complètes de l'interface résultat du plan de voyage.
+ * AgendaSection   : liste des événements à noter (fêtes, fermetures).
+ * PackingSection  : checklist valise interactive avec ajout d'items.
+ * DateRangePicker : sélecteur de dates aller/retour avec calendrier
+ *                   visuel et calcul automatique des nuits.
+ * FileUpload      : zone de glisser-déposer pour photo/PDF/TXT
+ *                   à analyser par Sofia pour générer un plan.
+ */
+
 import { useState, useRef } from "react";
 import { C, enc } from "../lib/constants";
 import { Chip } from "./ui";
