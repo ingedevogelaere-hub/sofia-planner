@@ -1,3 +1,15 @@
+/**
+ * utils/pdf.js
+ * ─────────────────────────────────────────────────────────
+ * Génération du PDF magazine du plan de voyage.
+ * generatePDF(plan, form, destDisplay) : ouvre un nouvel onglet
+ * contenant une mise en page HTML/CSS style magazine (couverture,
+ * itinéraire jour par jour, incontournables, hébergements,
+ * restaurants, sorties, conseils, budget) puis déclenche l'impression.
+ * Récupère les photos déjà chargées depuis photoCache (Unsplash)
+ * et les encode en base64 pour les inclure dans le document.
+ */
+
 import { photoCache } from "../hooks/usePhoto";
 import { buildMapUrl } from "../lib/links";
 import { enc } from "../lib/constants";
