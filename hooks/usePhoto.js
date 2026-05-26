@@ -1,3 +1,13 @@
+/**
+ * hooks/usePhoto.js
+ * ─────────────────────────────────────────────────────────
+ * Hook React custom pour charger des photos Unsplash à la demande.
+ * usePhoto(query) : prend un mot-clé, retourne une URL d'image.
+ * Cache en mémoire (photoCache) pour éviter les appels doublons.
+ * Fallback sur source.unsplash.com puis picsum.photos si la clé
+ * API échoue. photoCache est exporté pour la génération PDF.
+ */
+
 import { useState, useEffect } from "react";
 import { enc, enc2, UNSPLASH_KEY } from "../lib/constants";
 
