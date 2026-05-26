@@ -1,3 +1,13 @@
+/**
+ * components/cards.js
+ * ─────────────────────────────────────────────────────────
+ * Cartes de contenu principales affichées dans les onglets du plan.
+ * DayCard    : carte journée (photo + matin/après-midi/soir/tip).
+ * OutingCard : carte sortie ou randonnée (difficulté, distance, accès).
+ * ItemCard   : carte générique pour hébergements, restaurants,
+ *              sites remarquables (photo + infos + liens externes).
+ */
+
 import { C, enc } from "../lib/constants";
 import { Photo, Chip, LinkBar, NoteField } from "./ui";
 
