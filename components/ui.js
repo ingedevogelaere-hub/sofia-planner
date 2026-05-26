@@ -37,7 +37,7 @@ export function LinkBar({ type, dest, dateStart, dateEnd, voy, voyA, itemName, i
     <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 10 }}>
       {itemWebsite && (
         <a href={itemWebsite} target="_blank" rel="noopener noreferrer"
-          style={{ padding: "4px 10px", background: C.ink, color: C.gold, borderRadius: 3, fontSize: 10, fontFamily: "'DM Mono',monospace" }}>
+          style={{ padding: "4px 10px", background: C.forest, color: C.gold, borderRadius: 3, fontSize: 10, fontFamily: "'DM Mono',monospace" }}>
           🌐 Site officiel
         </a>
       )}
