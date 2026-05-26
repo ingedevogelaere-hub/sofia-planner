@@ -11,7 +11,7 @@ export function DayCard({ d, form, plan, setTab, setOutingDayFilter }) {
       <Photo query={photoQ} h={160} />
       <div style={{ padding: "18px 20px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
-          <div style={{ width: 40, height: 40, borderRadius: "50%", background: C.ink, color: C.gold, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 700, flexShrink: 0 }}>
+          <div style={{ width: 40, height: 40, borderRadius: "50%", background: C.forest, color: C.gold, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 700, flexShrink: 0 }}>
             {d.num}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
