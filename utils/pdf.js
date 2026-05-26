@@ -65,7 +65,7 @@ export async function generatePDF(plan, form, destDisplay) {
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Lato',sans-serif;color:#1C1A14;background:#fff;font-size:13px;line-height:1.6}
 a{color:#B8972E;text-decoration:none}
-.cover{page-break-after:always;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;background:#1C1A14}
+.cover{page-break-after:always;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;background:#2C4A3E}
 .cover-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.45}
 .cover-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.2),rgba(0,0,0,.7))}
 .cover-content{position:relative;z-index:2;text-align:center;color:#fff;padding:40px}
@@ -80,7 +80,7 @@ a{color:#B8972E;text-decoration:none}
 .day-card{margin-bottom:30px;border-radius:8px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.08);page-break-inside:avoid}
 .day-photo{width:100%;height:220px;object-fit:cover;display:block}
 .day-photo-placeholder{width:100%;height:160px;background:linear-gradient(135deg,#EDE0C4,#FAF6EE);display:block}
-.day-header{background:#1C1A14;padding:14px 20px;display:flex;align-items:baseline;gap:16}
+.day-header{background:#2C4A3E;padding:14px 20px;display:flex;align-items:baseline;gap:16}
 .day-num{font-family:'Lato',sans-serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#B8972E;flex-shrink:0}
 .day-title{font-family:'Playfair Display',serif;font-size:18px;color:#fff;font-weight:700}
 .day-loc{font-size:12px;color:#999;margin-left:10px;font-family:'Lato',sans-serif;font-weight:300}
@@ -94,7 +94,7 @@ a{color:#B8972E;text-decoration:none}
 .list-item-title{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;display:flex;align-items:center;gap:8;flex-wrap:wrap}
 .list-item-loc{font-size:12px;color:#B8972E}
 .list-item-desc{font-size:12px;color:#555;line-height:1.6}
-.link-btn{display:inline-block;margin-top:6px;padding:4px 10px;background:#1C1A14;color:#B8972E!important;border-radius:3px;font-size:10px;letter-spacing:1px}
+.link-btn{display:inline-block;margin-top:6px;padding:4px 10px;background:#2C4A3E;color:#B8972E!important;border-radius:3px;font-size:10px;letter-spacing:1px}
 .badge{display:inline-block;padding:2px 8px;border-radius:10px;background:#EDE0C4;color:#666;font-size:10px;font-family:'Lato',sans-serif;font-weight:700;letter-spacing:1px}
 .price{display:inline-block;padding:2px 8px;border-radius:10px;background:#FAF6EE;color:#B8972E;font-size:11px;font-weight:700}
 .agenda-item{padding:12px 16px;border-radius:6px;margin-bottom:10px;font-size:12px;line-height:1.6}
@@ -109,7 +109,7 @@ a{color:#B8972E;text-decoration:none}
 .tip-num{width:26px;height:26px;border-radius:50%;background:#B8972E;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px}
 .maps-bar{text-align:center;margin:20px 0}
 .maps-btn{display:inline-block;padding:10px 24px;background:#4285F4;color:#fff!important;border-radius:6px;font-size:12px;letter-spacing:1px}
-.cover-bg-gradient{position:absolute;inset:0;background:linear-gradient(135deg,#1C1A14 0%,#2C4A3E 50%,#1A3A5C 100%)}
+.cover-bg-gradient{position:absolute;inset:0;background:linear-gradient(135deg,#2C4A3E 0%,#1A3A5C 50%,#2C4A3E 100%)}
 .page-content{padding:40px 50px}
 @media print{body{margin:0;padding:0}.cover{height:100vh}}
 </style>
