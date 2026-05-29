@@ -22,6 +22,8 @@ import { Photo, HeroPhoto, Chip, LinkBar, NoteField, CityInput } from "../compon
 import { DayCard, OutingCard, ItemCard } from "../components/cards";
 import { AgendaSection, PackingSection, DateRangePicker, FileUpload } from "../components/sections";
 import { generatePDF } from "../utils/pdf";
+import { generateBook } from "../utils/book";
+import { photoCache } from "../hooks/usePhoto";
 
 // ─── Main Component ──────────────────────────────────────────
 export default function SofiaPlanner() {
@@ -165,6 +167,7 @@ export default function SofiaPlanner() {
         @keyframes sp{to{transform:rotate(360deg)}}
         @keyframes fade{0%,100%{opacity:.3}50%{opacity:1}}
         @keyframes d{0%,80%,100%{opacity:.2}40%{opacity:1}}
+        @media(max-width:600px){.date-help{display:none!important}}
         @media(max-width:768px){.result-layout{flex-direction:column!important;height:auto!important}.chat-panel{width:100%!important;height:360px!important;border-left:none!important;border-top:1px solid #EDE0C4!important}.fg2{grid-template-columns:1fr!important}.fg4{grid-template-columns:1fr 1fr!important}}
         @media print{.np{display:none!important}body{background:#fff!important}}
       `}</style>
@@ -179,6 +182,7 @@ export default function SofiaPlanner() {
         {phase === "result" && (
           <div style={{ display:"flex", gap:6, flexShrink:0 }}>
             <button onClick={() => generatePDF(plan, form, destDisplay)} style={{ padding:"8px 12px", background:C.gold, color:"#fff", border:"none", borderRadius:4, fontFamily:"'DM Mono',monospace", fontSize:8, letterSpacing:1, textTransform:"uppercase", cursor:"pointer" }}>📄 PDF</button>
+            <button onClick={() => generateBook(plan, form, destDisplay, photoCache)} style={{ padding:"8px 12px", background:C.navy, color:"#fff", border:"none", borderRadius:4, fontFamily:"'DM Mono',monospace", fontSize:8, letterSpacing:1, textTransform:"uppercase", cursor:"pointer" }}>📖 Livre</button>
             <a href={buildMapUrl(plan, destDisplay)} target="_blank" rel="noopener noreferrer" style={{ padding:"8px 12px", background:"transparent", color:"#888", border:"1px solid #333", borderRadius:4, fontFamily:"'DM Mono',monospace", fontSize:8, cursor:"pointer", display:"inline-block", textDecoration:"none" }}>🗺️ Carte ↗</a>
             <button onClick={() => { setPhase("form"); setPlan(null); setMsgs([]); }} style={{ padding:"8px 12px", background:"transparent", color:"#666", border:"1px solid #333", borderRadius:4, fontFamily:"'DM Mono',monospace", fontSize:8, cursor:"pointer" }}>← Nouveau</button>
           </div>
@@ -224,11 +228,11 @@ export default function SofiaPlanner() {
               </div>
               <div>
                 <span style={lbl}>📅 Dates du séjour</span>
-                <div style={{ display:"flex", gap:16, alignItems:"flex-start" }}>
+                <div style={{ display:"flex", gap:16, alignItems:"flex-start", flexWrap:"wrap" }}>
                   <div style={{ flex:"0 0 auto", minWidth:0, width:"min(340px,100%)" }}>
                     <DateRangePicker dateStart={form.dateStart} dateEnd={form.dateEnd} nuits={form.nuits} onDateStart={v => handleDate("dateStart", v)} onDateEnd={v => handleDate("dateEnd", v)} onNuits={v => setF("nuits", v)} />
                   </div>
-                  <div style={{ flex:1, minWidth:0, display:"flex", flexDirection:"column", gap:8, paddingTop:4 }}>
+                  <div className="date-help" style={{ flex:1, minWidth:180, display:"flex", flexDirection:"column", gap:8, paddingTop:4 }}>
                     {form.dateStart && form.dateEnd ? (
                       <div style={{ background:C.cream, border:"1.5px solid "+C.parch, borderRadius:8, padding:"14px 16px" }}>
                         <div style={{ fontFamily:"'Playfair Display',serif", fontSize:22, fontWeight:900, color:C.gold, marginBottom:6 }}>🌙 {form.nuits} nuits</div>
